@@ -1,3 +1,0 @@
-"""
-FastAPI Authentication & Application Package
-"""
