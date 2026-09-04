@@ -6,4 +6,4 @@
 - <img width="1893" height="904" alt="image" src="https://github.com/user-attachments/assets/2ba984ab-44fd-4d63-a2b9-80ea34909a29" />
 - <img width="1910" height="982" alt="image" src="https://github.com/user-attachments/assets/1362764b-7486-4f24-b239-88ba36b972cb" />
 - <img width="1920" height="1070" alt="image" src="https://github.com/user-attachments/assets/49aec36d-96c4-4b28-aba3-ea6755a07508" />
-- After sign out: <img width="1743" height="988" alt="image" src="https://github.com/user-attachments/assets/da82c25a-f759-4ffa-a9e0-c3e8d0dee273" />
+- After signing out: <img width="1743" height="988" alt="image" src="https://github.com/user-attachments/assets/da82c25a-f759-4ffa-a9e0-c3e8d0dee273" />
