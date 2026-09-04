@@ -8,13 +8,14 @@ class Settings(BaseSettings):
     APP_VERSION: str = "2.0.0"
     DEBUG: bool = True
 
-    # Database URL (supports SQLite / PostgreSQL)
-    DATABASE_URL: str = "sqlite:///./portal.db"
+    # Database URL (PostgreSQL)
+
+    DATABASE_URL: str 
 
     # JWT Settings
-    SECRET_KEY: str = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    SECRET_KEY: str 
+    ALGORITHM: str 
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30
 
     # Wazuh API Integration Settings
     WAZUH_API_URL: str = "https://localhost:55000"
@@ -28,7 +29,10 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
-        "http://localhost:8000"
+        "http://localhost:8000",
+        "http://192.168.50.101:5173",
+        "https://brunette-headset-former-ben.trycloudflare.com",
+
     ]
 
     class Config:

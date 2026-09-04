@@ -2,14 +2,25 @@ import api from './api';
 
 export const authService = {
   login: async (usernameOrEmail, password) => {
-    const response = await api.post('/api/auth/login', {
-      username_or_email: usernameOrEmail,
-      password: password,
+    const formData = new URLSearchParams();
+
+    formData.append('username', usernameOrEmail);
+    formData.append('password', password);
+
+    const response = await api.post('/api/auth/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
     });
+
     if (response.data.access_token) {
       localStorage.setItem('xdr_auth_token', response.data.access_token);
-      localStorage.setItem('xdr_user_info', JSON.stringify(response.data.user));
+      localStorage.setItem(
+        'xdr_user_info',
+        JSON.stringify(response.data.user)
+      );
     }
+
     return response.data;
   },
 
@@ -20,14 +31,20 @@ export const authService = {
 
   getCurrentUser: async () => {
     const response = await api.get('/api/home/me');
+
     if (response.data.user) {
-      localStorage.setItem('xdr_user_info', JSON.stringify(response.data.user));
+      localStorage.setItem(
+        'xdr_user_info',
+        JSON.stringify(response.data.user)
+      );
     }
+
     return response.data;
   },
 
   getStoredUser: () => {
     const userJson = localStorage.getItem('xdr_user_info');
+
     if (userJson) {
       try {
         return JSON.parse(userJson);
@@ -35,6 +52,7 @@ export const authService = {
         return null;
       }
     }
+
     return null;
   },
 

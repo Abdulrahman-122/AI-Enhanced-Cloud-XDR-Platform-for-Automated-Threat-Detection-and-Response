@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
-
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
+from app.schemas.user import UserCreate, UserResponse, Token
 from app.auth.security import hash_password, verify_password, create_access_token
+from fastapi.security import OAuth2PasswordRequestForm
 from app.config import settings
-
+from datetime import timedelta 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
@@ -58,11 +58,12 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
     summary="User Login & JWT Token generation (API 2)",
     description="Authenticates user by username or email and password, returns a JWT access token."
 )
-def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
+def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # Find user by username or email
     user = db.query(User).filter(
-        (User.username == credentials.username_or_email) | 
-        (User.email == credentials.username_or_email)
+        (User.username == form_data.username) | 
+
+        (User.email == form_data.username)
     ).first()
 
     if not user:
@@ -72,7 +73,7 @@ def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not verify_password(credentials.password, user.hashed_password):
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="اسم المستخدم أو كلمة المرور غير صحيحة (Incorrect credentials)",

@@ -7,6 +7,8 @@ export default function Login({ onLoginSuccess }) {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -47,11 +49,6 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
-  const handleQuickDemoLogin = () => {
-    setUsernameOrEmail('fouad_dev');
-    setPassword('SecurePassword123!');
-  };
-
   return (
     <div className="min-h-screen bg-[#070B14] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Cyber Grid & Glow Accents */}
@@ -74,7 +71,7 @@ export default function Login({ onLoginSuccess }) {
             XDR Security Platform
           </h1>
           <p className="text-xs font-semibold text-cyan-400 mt-1">
-            El Shorouk Academy &bull; أكاديمية الشروق
+            El Shorouk Academy &bull; 
           </p>
           <p className="text-[11px] font-mono text-slate-400 uppercase tracking-widest mt-0.5">
             Graduation Project &bull; SOC Defense System
@@ -103,7 +100,7 @@ export default function Login({ onLoginSuccess }) {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Eng. Fouad"
+                    placeholder="e.g. Tom Batrick"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition"
                   />
                 </div>
@@ -118,7 +115,7 @@ export default function Login({ onLoginSuccess }) {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="fouad@sha.edu.eg"
+                    placeholder="Tom@demo.edu.eg"
                     required
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition"
                   />
@@ -137,7 +134,7 @@ export default function Login({ onLoginSuccess }) {
                 type="text"
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
-                placeholder={isRegisterMode ? 'Choose username' : 'Enter username or email'}
+                placeholder={isRegisterMode ? 'Your username' : 'Enter username or email'}
                 required
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition font-mono"
               />
@@ -167,8 +164,59 @@ export default function Login({ onLoginSuccess }) {
               </button>
             </div>
           </div>
+          {isRegisterMode && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Confirm Password
+              </label>
 
-          <button
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  required
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-900/80 border text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-1 transition font-mono ${
+                    confirmPassword && confirmPassword !== password
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                      : confirmPassword && confirmPassword === password
+                      ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                      : 'border-slate-700/80 focus:border-cyan-400 focus:ring-cyan-400'
+                  }`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-200 transition"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+
+              {confirmPassword && confirmPassword !== password && (
+                <p className="mt-1.5 text-xs text-red-400">
+                  Passwords do not match.
+                </p>
+              )}
+
+              {confirmPassword && confirmPassword === password && (
+                <p className="mt-1.5 text-xs text-green-400">
+                  Passwords match ✓
+                </p>
+              )}
+            </div>
+          )}    
+              
+    
+            <button
             type="submit"
             disabled={loading}
             className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider shadow-glow-cyan flex items-center justify-center gap-2 transition duration-200 disabled:opacity-50"
@@ -202,25 +250,7 @@ export default function Login({ onLoginSuccess }) {
               : 'Need a new account? Register here'}
           </button>
 
-          {!isRegisterMode && (
-            <button
-              type="button"
-              onClick={handleQuickDemoLogin}
-              className="text-[11px] text-slate-400 hover:text-cyan-300 font-mono bg-slate-800/60 px-2.5 py-1 rounded border border-slate-700/60 transition"
-            >
-              Fill Test Credentials (fouad_dev)
-            </button>
-          )}
-
           <div className="w-full pt-3 mt-1 border-t border-slate-800/60 flex justify-center">
-            <button
-              type="button"
-              onClick={() => navigate('/academy')}
-              className="text-[11px] text-slate-300 hover:text-cyan-300 font-medium flex items-center gap-1.5 transition"
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>About El Shorouk Academy & Engineering Sectors &rarr;</span>
-            </button>
           </div>
         </div>
       </div>

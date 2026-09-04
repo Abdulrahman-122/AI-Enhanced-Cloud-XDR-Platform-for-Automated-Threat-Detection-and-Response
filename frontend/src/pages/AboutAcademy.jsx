@@ -234,7 +234,7 @@ export default function AboutAcademy() {
                 أكاديمية الشروق &bull; مدينة الشروق - القاهرة
               </p>
               <p className="text-xs text-slate-300 max-w-2xl leading-relaxed pt-1 font-normal">
-                Established in 1995, El Shorouk Academy stands as a premier Egyptian higher education institution accredited by <strong>NAQAAE</strong> and the <strong>Ministry of Higher Education</strong>. The Higher Institute of Engineering delivers accredited 4-year credit hour bachelor degrees preparing top-tier engineering professionals.
+                Established in 1995, El Shorouk Academy stands as a premier Egyptian higher education institution accredited by <strong>NAQAAE</strong> and the <strong>Ministry of Higher Education</strong>. The Higher Institute of Engineering delivers accredited 5-year credit hour bachelor degrees preparing top-tier engineering professionals.
               </p>
             </div>
           </div>
@@ -275,7 +275,7 @@ export default function AboutAcademy() {
             <BookOpen className="w-5 h-5 text-emerald-400 shrink-0" />
             <div>
               <div className="font-bold text-slate-100">Credit Hour System</div>
-              <div className="text-[10px] text-slate-400">4-Year Bachelor Degree</div>
+              <div className="text-[10px] text-slate-400">5-Year Bachelor Degree</div>
             </div>
           </div>
 
@@ -413,7 +413,7 @@ export default function AboutAcademy() {
                 <p className="text-xs text-cyan-400 font-mono mt-0.5">Higher Institute of Engineering &bull; El Shorouk Academy</p>
               </div>
               <span className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold">
-                4 Years B.Sc.
+                5 Years B.Sc.
               </span>
             </div>
 
