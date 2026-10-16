@@ -28,6 +28,7 @@ cd ..
 git clone https://github.com/kubernetes-csi/csi-driver-host-path.git
 cd csi-driver-host-path
 ./deploy/kubernetes-latest/deploy.sh
+kubectl apply -f examples/csi-storageclass.yaml       # creates csi-hostpath-sc
 #install CDI(containerized data importer)
 export VERSION=$(basename $(curl -s -w %{redirect_url} https://github.com/kubevirt/containerized-data-importer/releases/latest))
 kubectl apply -f https://github.com/kubevirt/containerized-data-importer/releases/download/$VERSION/cdi-operator.yaml
@@ -35,6 +36,12 @@ kubectl apply -f https://github.com/kubevirt/containerized-data-importer/release
 kubectl get cdi -n cdi        # wait for Deployed
 #or go here and build it
 https://kubevirt.io/labs/kubernetes/lab2.html
+#create the kubevirt crd
+export VERSION=$(curl -s https://storage.googleapis.com/kubevirt-prow/release/kubevirt/kubevirt/stable.txt)
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-operator.yaml
+kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-cr.yaml
+kubectl -n kubevirt wait kv kubevirt --for condition=Available --timeout=15m
+
 ---
 . Get the Ubuntu image once and reuse it (“golden image”)
 
@@ -61,18 +68,38 @@ kubectl apply -f ubuntu-base.yaml
 kubectl get dv -w            # until Succeeded
 
 Option B: upload a local file.
-virtctl image-upload dv ubuntu-2404-base -n xdr-server \
+- to know the size of the image in order to append to it's pvc enough storage
+qemu-img info /home/abdo/studying/Grad_projects/The_Full_Project/k8s/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img | grep -i "virtual size"
+output: virtual size: 3.5 GiB (3758096384 bytes)
+
+3. Make sure the proxy forward is running
+
+--uploadproxy-url=https://127.0.0.1:18443 needs a live port-forward, and your earlier background job may have died:
+
+
+kubectl port-forward -n cdi svc/cdi-uploadproxy 18443:443 &
+4. Corrected upload
+
+virtctl image-upload dv xdr-volume -n xdr-server \
   --image-path="/home/abdo/studying/Grad_projects/The_Full_Project/k8s/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img" \
-  --size=7Gi \
+  --size=5Gi \
   --storage-class=csi-hostpath-sc \
   --access-mode=ReadWriteOnce \
   --volume-mode=filesystem \
   --uploadproxy-url=https://127.0.0.1:18443 \
   --insecure
+5. Use it for new VMs
+bash
+BASE=xdr-volume ./new-vm.sh vm3 1 1 8 2            #new-vm.sh (under the first vm1)
+
+```
+- this is what we need:
+- <img width="742" height="68" alt="image" src="https://github.com/user-attachments/assets/e4d4fe2e-e1e1-44c0-ae64-3de33b3d084d" />
+- <img width="922" height="154" alt="image" src="https://github.com/user-attachments/assets/5e2a68f2-1a9f-4be0-b53c-d64c3a5108c0" />
 
 ---
-. Writing your first VM
-
+# Writing your first VM
+```
 Since you know YAML, here is every block with its purpose:
 
 yaml
@@ -80,85 +107,127 @@ yaml
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: vm1
+  name: wazuh
+  namespace: xdr-server
 spec:
-  runStrategy: Always            # Always | Halted | Manual | RerunOnFailure
-  dataVolumeTemplates:           # per-VM disks, created with the VM
+  runStrategy: Always
+  dataVolumeTemplates:
   - metadata:
-      name: vm1-root
+      name: wazuh-root
     spec:
       storage:
         storageClassName: csi-hostpath-sc
+        accessModes: ["ReadWriteOnce"]
+        volumeMode: Filesystem
         resources:
           requests:
-            storage: 20Gi        # bigger than the base image; cloud-init grows the filesystem
+            storage: 12Gi          # must be >= the golden image PVC (xdr-volume, 5Gi); Wazuh packages need room
       source:
-        pvc:                     # clone the golden image
-          name: ubuntu-2204-base
-          namespace: default
+        pvc:                       # clone the golden Ubuntu image
+          name: xdr-volume
+          namespace: xdr-server
   - metadata:
-      name: vm1-data             # SEPARATE data disk (best practice)
+      name: wazuh-data
     spec:
       storage:
         storageClassName: csi-hostpath-sc
+        accessModes: ["ReadWriteOnce"]
+        volumeMode: Filesystem
         resources:
           requests:
-            storage: 5Gi
+            storage: 20Gi          # Wazuh indexer data grows; 3Gi fills up fast
       source:
         blank: {}
   template:
     metadata:
       labels:
-        app: vm1
+        app: wazuh
     spec:
       domain:
         cpu:
-          cores: 2               # vCPUs the guest sees
+          cores: 2
         memory:
-          guest: 2Gi             # RAM the guest sees
-        resources:               # what the pod asks Kubernetes for
+          guest: 4Gi
+        resources:
           requests:
-            cpu: "2"
-            memory: 2300Mi       # guest + QEMU overhead
+            cpu: "1"
+            memory: 4500Mi         # guest 4Gi + ~400Mi QEMU overhead
           limits:
             cpu: "2"
-            memory: 2300Mi       # requests == limits gives Guaranteed QoS
+            memory: 4500Mi
         devices:
           disks:
           - name: rootdisk
             disk: {bus: virtio}
           - name: datadisk
+            serial: appdata01
             disk: {bus: virtio}
           - name: cloudinit
             disk: {bus: virtio}
           interfaces:
           - name: default
-            masquerade: {}       # NAT through the pod network
+            masquerade: {}
       networks:
       - name: default
         pod: {}
       volumes:
       - name: rootdisk
-        dataVolume: {name: vm1-root}
+        dataVolume: {name: wazuh-root}
       - name: datadisk
-        dataVolume: {name: vm1-data}
+        dataVolume: {name: wazuh-data}
       - name: cloudinit
         cloudInitNoCloud:
+          networkData: |
+            version: 2
+            ethernets:
+              all-en:
+                match:
+                  name: "en*"
+                dhcp4: true
           userData: |
             #cloud-config
-            hostname: vm1
-            user: ubuntu
-            password: ubuntu
+            hostname: wazuh
+            user: adam
+            password: adam
             chpasswd: {expire: false}
             ssh_pwauth: true
             packages:
               - qemu-guest-agent
             runcmd:
               - systemctl enable --now qemu-guest-agent
-              - mkfs.ext4 -L appdata /dev/vdb || true
+              - blkid /dev/disk/by-id/virtio-appdata01 || mkfs.ext4 -L appdata /dev/disk/by-id/virtio-appdata01
               - mkdir -p /data
               - echo 'LABEL=appdata /data ext4 defaults,nofail 0 2' >> /etc/fstab
               - mount -a
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazuh-ssh
+  namespace: xdr-server
+spec:
+  type: NodePort
+  selector:
+    app: wazuh
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: 22
+    nodePort: 30024
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazuh
+  namespace: xdr-server
+spec:
+  selector:
+    app: wazuh
+  ports:
+  - {name: events, port: 1514, targetPort: 1514}
+  - {name: enroll, port: 1515, targetPort: 1515}
+  - {name: api, port: 55000, targetPort: 55000}
+  - {name: dashboard, port: 443, targetPort: 443}
 ---
 kubectl apply -f vm1.yaml
 kubectl get vm,vmi,dv,pvc
