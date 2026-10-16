@@ -588,13 +588,13 @@ echo 'network: {config: disabled}' > /etc/cloud/cloud.cfg.d/99-disable-network-c
 # How to install xdr
 ```
 1. Install Wazuh inside the VM
-bash
+
 ssh -p 30024 adam@172.19.0.6        # your node IP; or: virtctl console wazuh -n xdr-server
 
 Wazuh’s quickstart installs the server, indexer and dashboard on one host with its installation assistant, using the 4.14 script. 
 wazuh
 
-bash
+
 curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh
 sudo bash ./wazuh-install.sh -a 2>&1 | tee ~/wazuh-install.log
 
@@ -603,13 +603,13 @@ Use the 4.14 line. Wazuh 5.0 appears only as beta and release-candidate builds i
 At the end, the installer prints the credentials and confirms success, and the passwords for the indexer and API users are in a file inside wazuh-install-files.tar. 
 wazuh
 
-bash
+
 sudo tar -O -xvf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
 sudo systemctl status wazuh-manager wazuh-indexer wazuh-dashboard filebeat --no-pager
 
 Copy wazuh-install-files.tar out of the VM and keep it. It holds the certificates and passwords, and you need them later:
 
-bash
+
 sudo cp ~/wazuh-install-files.tar /tmp/ && sudo chmod 644 /tmp/wazuh-install-files.tar
 scp -P 30024 adam@172.19.0.6:/tmp/wazuh-install-files.tar .
 2. Right after install
@@ -617,7 +617,7 @@ Stop accidental upgrades. Wazuh recommends disabling its package repositories af
 wazuh
 Cap the indexer’s memory. Check /etc/wazuh-indexer/jvm.options for -Xms and -Xmx. With a 4Gi VM, 1g to 2g each is right (never more than half the RAM), then sudo systemctl restart wazuh-indexer.
 Move the indexer data to /data while it’s still small, so growth lands on the 20Gi disk instead of the root disk:
-bash
+
   sudo systemctl stop wazuh-dashboard filebeat wazuh-manager wazuh-indexer
   sudo mkdir -p /data/wazuh-indexer
   sudo rsync -a /var/lib/wazuh-indexer/ /data/wazuh-indexer/
@@ -631,7 +631,7 @@ Check findmnt /var/lib/wazuh-indexer, and that the owner is still wazuh-indexer.
 
 From your Arch machine, tunnel to it through the API, which doesn’t depend on node IPs:
 
-bash
+
 virtctl port-forward vm/wazuh 8443:443 -n xdr-server
 
 Then open https://localhost:8443. Your browser will warn about the self-signed certificate, which is expected. The user is admin, and the password comes from the passwords file above.
