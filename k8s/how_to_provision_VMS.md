@@ -316,6 +316,10 @@ Host vm1
   Port 30022
   User adam
   IdentityFile ~/.ssh/vm_ed25519
+
+---
+if you got a non matching for the ssh key run this to remove the old one and use the new one
+ssh-keygen -R '[172.19.0.2]:30022'
 ```
 #script for provisioning a new vm
 ```
