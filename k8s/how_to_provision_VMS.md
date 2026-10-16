@@ -586,6 +586,7 @@ echo 'network: {config: disabled}' > /etc/cloud/cloud.cfg.d/99-disable-network-c
 ```
 ---
 # How to install xdr
+```
 1. Install Wazuh inside the VM
 bash
 ssh -p 30024 adam@172.19.0.6        # your node IP; or: virtctl console wazuh -n xdr-server
@@ -634,3 +635,4 @@ bash
 virtctl port-forward vm/wazuh 8443:443 -n xdr-server
 
 Then open https://localhost:8443. Your browser will warn about the self-signed certificate, which is expected. The user is admin, and the password comes from the passwords file above.
+```
