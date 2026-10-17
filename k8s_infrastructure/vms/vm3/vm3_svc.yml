@@ -1,0 +1,110 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm3
+  namespace: xdr-server
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+  - metadata:
+      name: vm3-root
+    spec:
+      storage:
+        storageClassName: csi-hostpath-sc
+        accessModes: ["ReadWriteOnce"]
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 10Gi          # must be bigger than the golden image (~7.4Gi)
+      source:
+        pvc:                       # clone the golden Ubuntu image
+          name: xdr-volume
+          namespace: xdr-server
+  - metadata:
+      name: vm3-data
+    spec:
+      storage:
+        storageClassName: csi-hostpath-sc
+        accessModes: ["ReadWriteOnce"]
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 2Gi
+      source:
+        blank: {}
+  template:
+    metadata:
+      labels:
+        app: vm3
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        memory:
+          guest: 1Gi
+        resources:
+          requests:
+            cpu: "250m"
+            memory: 1425Mi
+          limits:
+            cpu: "1"
+            memory: 1425Mi
+        devices:
+          disks:
+          - name: rootdisk
+            disk: {bus: virtio}
+          - name: datadisk
+            serial: appdata01
+            disk: {bus: virtio}
+          - name: cloudinit
+            disk: {bus: virtio}
+          interfaces:
+          - name: default
+            masquerade: {}
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - name: rootdisk
+        dataVolume: {name: vm3-root}
+      - name: datadisk
+        dataVolume: {name: vm3-data}
+      - name: cloudinit
+        cloudInitNoCloud:
+          networkData: |
+            version: 2
+            ethernets:
+              all-en:
+                match:
+                  name: "en*"
+                dhcp4: true
+          userData: |
+            #cloud-config
+            hostname: vm3
+            user: adam
+            password: adam
+            chpasswd: {expire: false}
+            ssh_pwauth: true
+            packages:
+              - qemu-guest-agent
+            runcmd:
+              - systemctl enable --now qemu-guest-agent
+              - blkid /dev/disk/by-id/virtio-appdata01 || mkfs.ext4 -L appdata /dev/disk/by-id/virtio-appdata01
+              - mkdir -p /data
+              - echo 'LABEL=appdata /data ext4 defaults,nofail 0 2' >> /etc/fstab
+              - mount -a
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vm3-ssh
+  namespace: xdr-server
+spec:
+  type: NodePort
+  selector:
+    app: vm3
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: 22
+    nodePort: 30024

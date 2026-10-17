@@ -1,0 +1,305 @@
+#!/bin/bash
+
+# Tool to create wazuh-install.sh, wazuh-certs-tool.sh
+# and wazuh-passwords-tool.sh
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+readonly base_path_builder="$(dirname "$(readlink -f "$0")")"
+readonly resources_installer="${base_path_builder}/install_functions"
+readonly resources_config="${base_path_builder}/config"
+readonly resources_certs="${base_path_builder}/cert_tool"
+readonly resources_passwords="${base_path_builder}/passwords_tool"
+readonly resources_common="${base_path_builder}/common_functions"
+readonly resources_credentials="${base_path_builder}/credentials_lib/wazuh-credentials.sh"
+readonly credentials_begin_marker="# ------------ wazuh-credentials.sh ------------ "
+readonly credentials_end_marker="# ------------ end of wazuh-credentials.sh ------------ "
+readonly resources_download="${base_path_builder}/downloader"
+source_branch="v5.0.0"
+
+function getHelp() {
+
+    echo -e ""
+    echo -e "NAME"
+    echo -e "        $(basename "$0") - Builds the Wazuh installation assistant and tools."
+    echo -e ""
+    echo -e "SYNOPSIS"
+    echo -e "        $(basename "$0") [-v] -i | -c | -p"
+    echo -e ""
+    echo -e "DESCRIPTION"
+    echo -e "        -i,  --installer"
+    echo -e "                Builds the unattended installer single file wazuh-install.sh"
+    echo -e ""
+    echo -e "        -c,  --cert-tool"
+    echo -e "                Builds the certificate creation tool wazuh-certs-tool.sh"
+    echo -e ""
+    echo -e "        -p,  --passwords-tool"
+    echo -e "                Builds the password creation and modification tool wazuh-passwords-tool.sh"
+    echo -e ""
+    echo -e "        -h,  --help"
+    echo -e "                Shows help."
+    exit 1
+
+}
+
+function buildInstaller() {
+
+    output_script_path="${base_path_builder}/wazuh-install.sh"
+
+    ## Create installer script
+    echo -n > "${output_script_path}"
+
+    ## License
+    echo "#!/bin/bash
+
+# Wazuh installer
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation." >> "${output_script_path}"
+    echo >> "${output_script_path}"
+
+    grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
+    grep -Ev '^#|^\s*$' ${resources_installer}/installVariables.sh >> "${output_script_path}"
+
+    ## Update staging_url_stage from VERSION.json
+    stage_value=$(grep '"stage"' "${base_path_builder}/VERSION.json" | sed 's/.*"stage": *"\([^"]*\)".*/\1/')
+    sed -i "s/staging_url_stage=\"\"/staging_url_stage=\"${stage_value}\"/" "${output_script_path}"
+
+    echo >> "${output_script_path}"
+
+    ## Sigint trap
+    echo "trap installCommon_cleanExit SIGINT" >> "${output_script_path}"
+
+    ## JAVA_HOME
+    echo "export JAVA_HOME=\"/usr/share/wazuh-indexer/jdk/\"" >> "${output_script_path}"
+
+    ## Functions for all install function modules
+    install_modules=($(find "${resources_installer}" -type f))
+    install_modules_names=()
+    for module in "${install_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_installer}/,,g")
+        install_modules_names+=("${name}")
+    done
+    for i in "${!install_modules[@]}"; do
+        if [ "${install_modules_names[$i]}" != "installVariables.sh" ]; then
+            echo "# ------------ ${install_modules_names[$i]} ------------ " >> "${output_script_path}"
+            sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${install_modules[$i]}" >> "${output_script_path}"
+            echo >> "${output_script_path}"
+        fi
+    done
+
+
+    ## dist-detect.sh
+    checkDistDetectURL
+    echo "function dist_detect() {" >> "${output_script_path}"
+    curl -s "https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh" | sed '/^#/d' >> "${output_script_path}"
+    echo "}" >> "${output_script_path}"
+
+    ## Shared credentials library, used by the certificate functions
+    embedCredentialsLibrary
+
+    ## Common functions
+    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_common}/common.sh" >> "${output_script_path}"
+
+    ## Certificate tool library functions
+    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_certs}/certFunctions.sh" >> "${output_script_path}"
+
+    ## Main function and call to it
+    echo >> "${output_script_path}"
+    echo "main \"\$@\"" >> "${output_script_path}"
+}
+
+# Copies the shared credentials library into the tool byte for byte, between two
+# marker lines, and checks that the embedded copy matches the original file.
+function embedCredentialsLibrary() {
+
+    echo "${credentials_begin_marker}" >> "${output_script_path}"
+    cat "${resources_credentials}" >> "${output_script_path}"
+    echo "${credentials_end_marker}" >> "${output_script_path}"
+    echo >> "${output_script_path}"
+
+    original_checksum=$(sha512sum "${resources_credentials}" | awk '{print $1}')
+    embedded_checksum=$(awk -v begin="${credentials_begin_marker}" -v end="${credentials_end_marker}" '
+        $0 == end { inside = 0 }
+        inside { print }
+        $0 == begin { inside = 1 }
+    ' "${output_script_path}" | sha512sum | awk '{print $1}')
+
+    if [ "${original_checksum}" != "${embedded_checksum}" ]; then
+        echo "Error: The embedded wazuh-credentials.sh does not match ${resources_credentials}."
+        exit 1
+    fi
+
+}
+
+function buildPasswordsTool() {
+    output_script_path="${base_path_builder}/wazuh-passwords-tool.sh"
+
+    ## Create installer script
+    echo -n > "${output_script_path}"
+
+    ## License
+    echo "#!/bin/bash
+
+# Wazuh installer
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation." >> "${output_script_path}"
+
+    ## Common and Passwords tool variables
+    grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
+    grep -Ev '^#|^\s*$' "${resources_passwords}/passwordsVariables.sh" >> "${output_script_path}"
+    echo >> "${output_script_path}"
+
+    ## Shared credentials library
+    embedCredentialsLibrary
+
+    ## Functions for all passwords tool function modules
+    passwords_modules=($(find "${resources_passwords}" -type f))
+    passwords_modules_names=()
+    for module in "${passwords_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_passwords}/,,g")
+        passwords_modules_names+=("${name}")
+    done
+    for i in "${!passwords_modules[@]}"; do
+        if [ "${passwords_modules[$i]}" != "passwordsVariables.sh" ]; then
+            echo "# ------------ ${passwords_modules_names[$i]} ------------ " >> "${output_script_path}"
+            sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${passwords_modules[$i]}" >> "${output_script_path}"
+            echo >> "${output_script_path}"
+        fi
+    done
+
+    ## Common functions
+    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_common}/common.sh" >> "${output_script_path}"
+
+    ## Call to main function
+    echo >> "${output_script_path}"
+    echo "main \"\$@\"" >> "${output_script_path}"
+}
+
+function buildCertsTool() {
+    output_script_path="${base_path_builder}/wazuh-certs-tool.sh"
+
+    ## Create installer script
+    echo -n > "${output_script_path}"
+
+    ## License
+    echo "#!/bin/bash
+
+# Wazuh installer
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation." >> "${output_script_path}"
+
+    ## Common and Certs tool variables
+    grep -Ev '^#|^\s*$' ${resources_common}/commonVariables.sh >> "${output_script_path}"
+    grep -Ev '^#|^\s*$' "${resources_certs}/certVariables.sh" >> "${output_script_path}"
+    echo >> "${output_script_path}"
+
+    ## Shared credentials library
+    embedCredentialsLibrary
+
+    ## Functions for all certs tool function modules
+    certs_modules=($(find "${resources_certs}" -type f))
+    certs_modules_names=()
+    for module in "${certs_modules[@]}"; do
+        name=$(echo "${module}" | sed "s,${resources_certs}/,,g")
+        certs_modules_names+=("${name}")
+    done
+    for i in "${!certs_modules[@]}"; do
+        if [ "${certs_modules[$i]}" != "certVariables.sh" ]; then
+            echo "# ------------ ${certs_modules_names[$i]} ------------ " >> "${output_script_path}"
+            sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${certs_modules[$i]}" >> "${output_script_path}"
+            echo >> "${output_script_path}"
+        fi
+    done
+
+    ## Common functions
+    sed -n '/^function [a-zA-Z_]\(\)/,/^}/p' "${resources_common}/common.sh" >> "${output_script_path}"
+
+    ## Call to main function
+    echo >> "${output_script_path}"
+    echo "main \"\$@\"" >> "${output_script_path}"
+
+}
+
+function builder_main() {
+
+    umask 066
+
+    while [ -n "${1}" ]
+    do
+        case "${1}" in
+            "-i"|"--installer")
+                installer=1
+                shift 1
+                ;;
+            "-c"|"--cert-tool")
+                certTool=1
+                shift 1
+                ;;
+            "-p"|"--passwords-tool")
+                passwordsTool=1
+                shift 1
+                ;;
+            "-h"|"--help")
+                getHelp
+                ;;
+            *)
+                echo "Unknown option: \"${1}\""
+                getHelp
+        esac
+    done
+
+    if [ -n "${installer}" ]; then
+        buildInstaller
+        chmod 500 ${output_script_path}
+    fi
+
+    if [ -n "${passwordsTool}" ]; then
+        buildPasswordsTool
+        chmod 500 ${output_script_path}
+    fi
+
+    if [ -n "${certTool}" ]; then
+        buildCertsTool
+        chmod 644 ${output_script_path}
+    fi
+}
+
+function checkDistDetectURL() {
+
+    urls=("https://raw.githubusercontent.com/wazuh/wazuh/${source_branch}/src/init/dist-detect.sh"
+          "https://raw.githubusercontent.com/wazuh/wazuh/master/src/init/dist-detect.sh")
+
+    for url in "${urls[@]}"; do
+        curl -s -o /dev/null "${url}" --retry 5 --retry-delay 5 --max-time 300 --fail
+        e_code="${PIPESTATUS[0]}"
+
+        if [ "${e_code}" -eq 0 ]; then
+            source_branch=$(echo "${url}" | awk -F'/' '{print $(NF-3)}')
+            break
+        fi
+    done
+
+    if [ "${e_code}" -ne 0 ]; then
+        echo -e "Error: Could not get the dist-detect file."
+        exit 1
+    fi
+
+}
+
+builder_main "$@"

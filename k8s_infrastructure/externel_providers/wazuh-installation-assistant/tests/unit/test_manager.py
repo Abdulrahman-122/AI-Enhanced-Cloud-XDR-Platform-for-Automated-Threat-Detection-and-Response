@@ -1,0 +1,326 @@
+"""
+Unit tests for install_functions/manager.sh
+
+Covers: manager_install, manager_startCluster, manager_configure, manager_copyCertificates,
+        manager_setRemotedSans
+"""
+
+import pytest
+
+from tests.unit.conftest import assert_failure, assert_success, run_bash_function
+
+MANAGER = "install_functions/manager.sh"
+COMMON = "common_functions/common.sh"
+COMMON_VARS = "common_functions/commonVariables.sh"
+BASE_SOURCES = [COMMON_VARS, COMMON, MANAGER]
+
+IGNORE_LOGGER = {"common_logger": "true"}
+
+
+class TestManagerInstall:
+    """Tests for manager_install.
+
+    The function:
+    1. Finds the pre-downloaded package file in download_dir.
+    2. Installs via installCommon_yumInstall or installCommon_aptInstall.
+    3. Calls common_checkInstalled and checks install_result / wazuh_installed.
+    """
+
+    def _run(self, sys_type, sep, tmp_path, pkg_install_success=True):
+        ext = "rpm" if sys_type == "yum" else "deb"
+        pkg_dir = tmp_path / "packages"
+        pkg_dir.mkdir()
+        (pkg_dir / f"wazuh-manager-5.0.0.x86_64.{ext}").touch()
+
+        install_result = "0" if pkg_install_success else "1"
+        wazuh_installed = "1" if pkg_install_success else ""
+
+        mocks = {
+            **IGNORE_LOGGER,
+            "installCommon_aptInstall": f"install_result={install_result}",
+            "installCommon_yumInstall": f"install_result={install_result}",
+            "common_checkInstalled": f"wazuh_installed={wazuh_installed}; install_result={install_result}",
+            "installCommon_rollBack": "true",
+        }
+        return run_bash_function(
+            BASE_SOURCES,
+            "manager_install",
+            mocks,
+            {
+                "sys_type": sys_type,
+                "sep": sep,
+                "wazuh_version": "5.0.0",
+                "wazuh_revision": "1",
+                "base_path": str(tmp_path),
+                "download_packages_directory": "packages",
+            },
+        )
+
+    def test_fail_package_not_found_yum(self, tmp_path):
+        """Exit 1 when no .rpm package file is present in download_dir."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_install",
+            {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
+            {
+                "sys_type": "yum",
+                "sep": "-",
+                "wazuh_version": "5.0.0",
+                "wazuh_revision": "1",
+                "base_path": str(tmp_path),
+                "download_packages_directory": "packages",
+            },
+        )
+        assert_failure(result)
+
+    def test_fail_package_not_found_apt(self, tmp_path):
+        """Exit 1 when no .deb package file is present in download_dir."""
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_install",
+            {**IGNORE_LOGGER, "installCommon_rollBack": "true"},
+            {
+                "sys_type": "apt-get",
+                "sep": "=",
+                "wazuh_version": "5.0.0",
+                "wazuh_revision": "1",
+                "base_path": str(tmp_path),
+                "download_packages_directory": "packages",
+            },
+        )
+        assert_failure(result)
+
+    def test_fail_yum_install_error(self, tmp_path):
+        """Exit 1 when yum package install fails."""
+        result = self._run("yum", "-", tmp_path, pkg_install_success=False)
+        assert_failure(result)
+
+    def test_fail_apt_install_error(self, tmp_path):
+        """Exit 1 when apt package install fails."""
+        result = self._run("apt-get", "=", tmp_path, pkg_install_success=False)
+        assert_failure(result)
+
+    def test_success_yum_install(self, tmp_path):
+        """Exit 0 when yum package install succeeds and component is detected."""
+        result = self._run("yum", "-", tmp_path, pkg_install_success=True)
+        assert_success(result)
+
+    def test_success_apt_install(self, tmp_path):
+        """Exit 0 when apt package install succeeds and component is detected."""
+        result = self._run("apt-get", "=", tmp_path, pkg_install_success=True)
+        assert_success(result)
+
+
+class TestManagerStartCluster:
+    """Tests for manager_startCluster.
+
+    The function iterates over node name/type arrays, reads the cluster key
+    from a tar file, and patches the manager config with sed.
+    """
+
+    def _run(self, extra_mocks=None):
+        mocks = {
+            **IGNORE_LOGGER,
+            "tar": "echo myclusterkey",
+            "grep": "echo 10",
+            "sed": "true",
+            **(extra_mocks or {}),
+        }
+        return run_bash_function(
+            BASE_SOURCES,
+            "manager_startCluster",
+            mocks,
+            {
+                "manager_node_names": "(wazuh-master wazuh-worker)",
+                "manager_node_ips": "(1.1.1.1 2.2.2.2)",
+                "manager_node_types": "(master worker)",
+                "winame": "wazuh-master",
+                "tar_file": "/tmp/wazuh-install-files.tar",
+                "debug": "",
+            },
+        )
+
+    def test_success_configures_cluster(self):
+        result = self._run()
+        assert_success(result)
+
+    def test_success_with_worker_node(self):
+        mocks = {
+            **IGNORE_LOGGER,
+            "tar": "echo myclusterkey",
+            "grep": "echo 10",
+            "sed": "true",
+        }
+        result = run_bash_function(
+            BASE_SOURCES,
+            "manager_startCluster",
+            mocks,
+            {
+                "manager_node_names": "(wazuh-master wazuh-worker)",
+                "manager_node_ips": "(1.1.1.1 2.2.2.2)",
+                "manager_node_types": "(master worker)",
+                "winame": "wazuh-worker",
+                "tar_file": "/tmp/wazuh-install-files.tar",
+                "debug": "",
+            },
+        )
+        assert_success(result)
+
+
+class TestManagerConfigure:
+    """Tests for manager_configure.
+
+    The indexer connector pair is placed before the package creates the wazuh-manager
+    group, and the package does not set its owner, so manager_configure does.
+    """
+
+    def _run(self, tmp_path, extra_mocks=None):
+        return run_bash_function(
+            BASE_SOURCES,
+            "manager_configure",
+            {**IGNORE_LOGGER, "sed": "true", **(extra_mocks or {})},
+            {"manager_cert_path": "/certs", "indexer_node_ips": "(1.1.1.1)", "debug": ""},
+        )
+
+    def test_success_gives_the_indexer_connector_pair_to_the_service_group(self, tmp_path):
+        log = tmp_path / "perm.log"
+        result = self._run(
+            tmp_path,
+            {"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+        )
+        assert_success(result)
+        calls = log.read_text().splitlines()
+        assert "chown root:wazuh-manager /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
+        assert "chmod 640 /certs/indexer-connector.pem /certs/indexer-connector-key.pem" in calls
+
+    def test_success_leaves_the_service_pairs_to_the_package(self, tmp_path):
+        """The package sets the owner of the remoted and apid pairs itself."""
+        log = tmp_path / "perm.log"
+        result = self._run(
+            tmp_path,
+            {"chown": f'echo "chown $*" >> "{log}"', "chmod": f'echo "chmod $*" >> "{log}"'},
+        )
+        assert_success(result)
+        calls = log.read_text() if log.exists() else ""
+        assert "remoted" not in calls
+        assert "apid" not in calls
+
+
+class TestManagerCopyCertificates:
+    """Tests for manager_copyCertificates.
+
+    Before the package is installed, the indexer connector and agent listener pairs of
+    the node are placed from the tar file with the names the package expects.
+    """
+
+    def _run(self, tmp_path, members):
+        import subprocess
+
+        staging = tmp_path / "wazuh-install-files"
+        staging.mkdir()
+        for name in members:
+            (staging / name).write_text(name)
+        tar_file = tmp_path / "wazuh-install-files.tar"
+        subprocess.run(["tar", "-cf", str(tar_file), "-C", str(tmp_path), "wazuh-install-files/"], check=True)
+        cert_path = tmp_path / "certs"
+
+        result = run_bash_function(
+            [*BASE_SOURCES, "install_functions/installCommon.sh"],
+            "manager_copyCertificates",
+            # install -o root needs root; the owner is the package's job anyway.
+            {**IGNORE_LOGGER, "install": 'cp "${@: -2:1}" "${@: -1}"'},
+            {"winame": "wazuh-master", "manager_cert_path": str(cert_path), "tar_file": str(tar_file), "debug": ""},
+        )
+        return result, cert_path
+
+    def test_success_places_pairs_with_package_names(self, tmp_path):
+        result, cert_path = self._run(
+            tmp_path,
+            [
+                "wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem",
+                "wazuh-master-apid.pem", "wazuh-master-apid-key.pem",
+            ],
+        )
+        assert_success(result)
+        assert (cert_path / "indexer-connector.pem").read_text() == "wazuh-master.pem"
+        assert (cert_path / "indexer-connector-key.pem").read_text() == "wazuh-master-key.pem"
+        assert (cert_path / "remoted.pem").read_text() == "wazuh-master-remoted.pem"
+        assert (cert_path / "remoted-key.pem").read_text() == "wazuh-master-remoted-key.pem"
+        assert (cert_path / "apid.pem").read_text() == "wazuh-master-apid.pem"
+        assert (cert_path / "apid-key.pem").read_text() == "wazuh-master-apid-key.pem"
+
+    def test_fail_when_remoted_pair_missing(self, tmp_path):
+        result, _ = self._run(tmp_path, ["wazuh-master.pem", "wazuh-master-key.pem"])
+        assert_failure(result)
+
+    def test_fail_when_apid_pair_missing(self, tmp_path):
+        """A tar from a certs tool that predates the Server API pair."""
+        result, _ = self._run(
+            tmp_path,
+            ["wazuh-master.pem", "wazuh-master-key.pem", "wazuh-master-remoted.pem", "wazuh-master-remoted-key.pem"],
+        )
+        assert_failure(result)
+
+
+class TestManagerSetRemotedSans:
+    """Tests for manager_setRemotedSans.
+
+    On an all-in-one install the manager package issues remoted.pem. Addresses given
+    with -as|--agent-san reach it through WAZUH_MANAGER_REMOTED_CERT_SANS, together
+    with the host addresses, because the variable replaces the discovered list.
+    """
+
+    def _run(self, agent_san):
+        return run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setRemotedSans; echo "SANS=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
+            {"agent_san": f"({' '.join(agent_san)})"},
+        )
+
+    def test_success_unset_without_agent_san(self):
+        result = self._run([])
+        assert_success(result)
+        assert "SANS=unset" in result.stdout
+
+    def test_success_types_and_dedups_addresses(self):
+        result = self._run(["203.0.113.7", "wazuh.example.com", "10.0.0.5"])
+        assert_success(result)
+        assert "SANS=IP:203.0.113.7,DNS:wazuh.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
+
+
+class TestManagerSetApidSans:
+    """Tests for manager_setApidSans.
+
+    On an all-in-one install the manager package issues apid.pem. Addresses given with
+    -ap|--api-san reach it through WAZUH_MANAGER_APID_CERT_SANS, together with the host
+    addresses, because the variable replaces the discovered list.
+    """
+
+    def _run(self, api_san):
+        return run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setApidSans; echo "SANS=${WAZUH_MANAGER_APID_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "printf '%s\\n' 10.0.0.5 host.example.com"},
+            {"api_san": f"({' '.join(api_san)})"},
+        )
+
+    def test_success_unset_without_api_san(self):
+        result = self._run([])
+        assert_success(result)
+        assert "SANS=unset" in result.stdout
+
+    def test_success_types_and_dedups_addresses(self):
+        result = self._run(["203.0.113.7", "api.example.com", "10.0.0.5"])
+        assert_success(result)
+        assert "SANS=IP:203.0.113.7,DNS:api.example.com,IP:10.0.0.5,DNS:host.example.com" in result.stdout
+
+    def test_success_does_not_touch_the_remoted_list(self):
+        result = run_bash_function(
+            [*BASE_SOURCES, "cert_tool/certFunctions.sh"],
+            'manager_setApidSans; echo "REMOTED=${WAZUH_MANAGER_REMOTED_CERT_SANS-unset}"',
+            {**IGNORE_LOGGER, "cert_hostAddresses": "true"},
+            {"api_san": "(api.example.com)"},
+        )
+        assert_success(result)
+        assert "REMOTED=unset" in result.stdout

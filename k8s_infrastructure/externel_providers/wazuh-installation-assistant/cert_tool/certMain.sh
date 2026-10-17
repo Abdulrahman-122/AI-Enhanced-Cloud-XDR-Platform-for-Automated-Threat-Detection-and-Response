@@ -1,0 +1,341 @@
+# Certificate tool - Main functions
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+function getHelp() {
+
+    echo -e ""
+    echo -e "NAME"
+    echo -e "        wazuh-certs-tool.sh - Manages the creation of certificates of the Wazuh components."
+    echo -e ""
+    echo -e "SYNOPSIS"
+    echo -e "        wazuh-certs-tool.sh [OPTIONS]"
+    echo -e ""
+    echo -e "DESCRIPTION"
+    echo -e "        -a,  --admin-certificates"
+    echo -e "                Creates the admin certificates."
+    echo -e ""
+    echo -e "        -as, --agent-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of every"
+    echo -e "                agent listener certificate, on top of the ip and dns entries of"
+    echo -e "                each manager node in config.yml. Repeat it for more than one."
+    echo -e "                It is how to name an address agents dial that no single node"
+    echo -e "                owns, such as a load balancer shared by every node of a cluster."
+    echo -e "                Must be used along with one of these options: -A, -wm"
+    echo -e ""
+    echo -e "        -ap, --api-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of every"
+    echo -e "                Server API certificate, on top of the ip and dns entries of each"
+    echo -e "                manager node in config.yml and loopback. Repeat it for more than"
+    echo -e "                one. Use it for the address API clients dial, such as a published"
+    echo -e "                name or a load balancer in front of the Server API."
+    echo -e "                Must be used along with one of these options: -A, -wm"
+    echo -e ""
+    echo -e "        -A, --all"
+    echo -e "                Creates certificates specified in config.yml and admin certificates."
+    echo -e "                If there is no root CA in the CA directory, a new one is created there."
+    echo -e ""
+    echo -e "        -ca, --root-ca-certificates"
+    echo -e "                Creates the root CA in the CA directory, if it does not exist yet."
+    echo -e ""
+    echo -e "        -lb, --load-balancer-certificates"
+    echo -e "                Creates the certificates of the load_balancer entries of config.yml."
+    echo -e "                Only needed by a proxy that terminates"
+    echo -e "                TLS: it is then the certificate agents validate, signed by the same"
+    echo -e "                root-ca they pin. A layer 4 passthrough load balancer terminates"
+    echo -e "                nothing and needs -as|--agent-san instead."
+    echo -e ""
+    echo -e "        -v,  --verbose"
+    echo -e "                Enables verbose mode."
+    echo -e ""
+    echo -e "        -wd,  --wazuh-dashboard-certificates"
+    echo -e "                Creates the Wazuh dashboard certificates."
+    echo -e ""
+    echo -e "        -wi,  --wazuh-indexer-certificates"
+    echo -e "                Creates the Wazuh indexer certificates."
+    echo -e ""
+    echo -e "        -wm,  --wazuh-manager-certificates"
+    echo -e "                Creates the Wazuh manager certificates."
+    echo -e "                Each manager node also gets <name>-remoted.pem and <name>-remoted-key.pem,"
+    echo -e "                the certificate of the agent listener (remoted and authd), and"
+    echo -e "                <name>-apid.pem and <name>-apid-key.pem, the certificate of the Server API."
+    echo -e ""
+    echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
+    echo -e "                Uses this directory to create the certificates, instead of a new one in /tmp."
+    echo -e "                The directory must not exist, or must be an empty directory owned by root."
+    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
+    echo -e ""
+    echo -e "ROOT CA"
+    echo -e "        The root CA is read from $(wazuh_ca_get_dir 2>/dev/null), or from the directory set in WAZUH_CA_DIR."
+    echo -e "        Its private key, root-ca.key, stays there and is never copied to the wazuh-certificates directory."
+    echo -e "        The tool must be run as root."
+    echo -e ""
+
+    exit 1
+
+}
+
+function main() {
+
+    # Set a restrictive umask so new regular files default to 600 and directories to 700,
+    # limiting access to the current user.
+    umask 0077
+
+    # The shared credentials library only creates and reads the root CA as root.
+    common_checkRoot
+    cert_checkOpenSSL
+
+    declare -a agent_san=()
+    declare -a api_san=()
+
+    if [ -n "${1}" ]; then
+        while [ -n "${1}" ]
+        do
+            case "${1}" in
+            "-a"|"--admin-certificates")
+                cert_rejectCAPaths "-a|--admin-certificates" "${2}"
+                cadmin=1
+                shift 1
+                ;;
+            "-A"|"--all")
+                cert_rejectCAPaths "-A|--all" "${2}"
+                all=1
+                shift 1
+                ;;
+            "-as"|"--agent-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -as|--agent-san"
+                    getHelp
+                    exit 1
+                else
+                    agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ap"|"--api-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -ap|--api-san"
+                    getHelp
+                    exit 1
+                else
+                    api_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ca"|"--root-ca-certificates"|"--root-ca-certificate")
+                ca=1
+                shift 1
+                ;;
+            "-lb"|"--load-balancer-certificates")
+                cert_rejectCAPaths "-lb|--load-balancer-certificates" "${2}"
+                clb=1
+                shift 1
+                ;;
+            "-h"|"--help")
+                getHelp
+                ;;
+            "-v"|"--verbose")
+                debugEnabled=1
+                shift 1
+                ;;
+            "-wd"|"--wazuh-dashboard-certificates")
+                cert_rejectCAPaths "-wd|--wazuh-dashboard-certificates" "${2}"
+                cdashboard=1
+                shift 1
+                ;;
+            "-wi"|"--wazuh-indexer-certificates")
+                cert_rejectCAPaths "-wi|--wazuh-indexer-certificates" "${2}"
+                cindexer=1
+                shift 1
+                ;;
+            "-wm"|"--wazuh-manager-certificates")
+                cert_rejectCAPaths "-wm|--wazuh-manager-certificates" "${2}"
+                cmanager=1
+                shift 1
+                ;;
+            "-tmp"|"--cert_tmp_path")
+                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cmanager}" == 1 || "${clb}" == 1 ) ]]; then
+                    if [[ -z "${2}" || ! "${2}" == /* ]]; then
+                        common_logger -e "Error on arguments. Probably missing </path/to/tmp_dir> or path does not start with '/'."
+                        getHelp
+                        exit 1
+                    else
+                        cert_tmp_path="${2}"
+                        shift 2
+                    fi
+                else
+                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -wm, -lb"
+                    getHelp
+                    exit 1
+                fi
+                ;;
+            *)
+                echo "Unknown option: ${1}"
+                getHelp
+            esac
+        done
+
+        common_logger "Verbose logging redirected to ${logfile}"
+
+        cert_validateAgentSan
+        cert_validateApiSan
+
+        if [[ -d "${base_path}"/wazuh-certificates ]]; then
+            if [ -n "$(ls -A "${base_path}"/wazuh-certificates)" ]; then
+                common_logger -e "Directory wazuh-certificates already exists in the same path as the script. Please, remove the certs directory to create new certificates."
+                exit 1
+            fi
+            # Removed so the temporary directory is moved to this name and not inside it.
+            rmdir "${base_path}"/wazuh-certificates
+        fi
+
+        cert_createTmpDir
+
+        cert_readConfig
+
+        if [[ -n "${all}" || -n "${cmanager}" ]]; then
+            cert_checkListenerReachability "warning"
+        fi
+
+        if [ -n "${debugEnabled}" ]; then
+            debug="2>&1 | tee -a ${logfile}"
+        fi
+
+        if [[ -n "${cadmin}" ]]; then
+            cert_checkRootCA
+            cert_generateAdmincertificate
+            common_logger "Admin certificates created."
+            cert_cleanFiles
+            cert_setpermisions
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
+        fi
+
+        if [[ -n "${all}" ]]; then
+            cert_checkRootCA "create"
+            cert_generateAdmincertificate
+            common_logger "Admin certificates created."
+            if cert_generateIndexercertificates; then
+                common_logger "Wazuh indexer certificates created."
+            fi
+            if cert_generateManagercertificates; then
+                common_logger "Wazuh manager certificates created."
+            fi
+            if cert_generateDashboardcertificates; then
+                common_logger "Wazuh dashboard certificates created."
+            fi
+            # Only when config.yml carries a load_balancer section: it is optional and
+            # its absence is not an error.
+            if cert_generateLoadbalancercertificates; then
+                common_logger "Load balancer certificates created."
+            fi
+            cert_cleanFiles
+            cert_setpermisions
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
+            cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
+            cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
+        fi
+
+        if [[ -n "${ca}" ]]; then
+            cert_generateRootCAcertificate
+            cp "${cert_ca_dir}/root-ca.pem" "${cert_tmp_path}/root-ca.pem"
+            common_logger "The root CA is in ${cert_ca_dir}. Its private key, root-ca.key, stays there."
+            cert_cleanFiles
+            cert_setpermisions
+            if [ -n "${debugEnabled}" ]; then
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+            fi
+        fi
+
+        if [[ -n "${cindexer}" ]]; then
+            if [ ${#indexer_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateIndexercertificates
+                common_logger "Wazuh indexer certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
+            else
+                common_logger -e "Indexer node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${cmanager}" ]]; then
+            if [ ${#manager_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateManagercertificates
+                common_logger "Wazuh manager certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
+                cert_verifyRemotedcertificates "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Manager node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${clb}" ]]; then
+            if [ ${#lb_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateLoadbalancercertificates
+                common_logger "Load balancer certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
+                cert_verifyLoadbalancercertificates "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Load balancer section not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${cdashboard}" ]]; then
+            if [ ${#dashboard_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateDashboardcertificates
+                common_logger "Wazuh dashboard certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                if [ -n "${debugEnabled}" ]; then
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+                else
+                    mv "${cert_tmp_path}" "${base_path}/wazuh-certificates" > /dev/null 2>&1
+                fi
+            else
+                common_logger -e "Dashboard node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+    else
+        getHelp
+    fi
+
+}

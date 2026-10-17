@@ -1,0 +1,471 @@
+# Wazuh installer - main functions
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+function getHelp() {
+
+    echo -e ""
+    echo -e "NAME"
+    echo -e "        $(basename "$0") - Install and configure Wazuh central components: Wazuh manager, Wazuh indexer, and Wazuh dashboard."
+    echo -e ""
+    echo -e "SYNOPSIS"
+    echo -e "        $(basename "$0") [OPTIONS] -a | -s | -wi <indexer-node-name> | -wd <dashboard-node-name> | -wm <manager-node-name>"
+    echo -e ""
+    echo -e "DESCRIPTION"
+    echo -e "        -a,  --all-in-one"
+    echo -e "                Install and configure Wazuh manager, Wazuh indexer, Wazuh dashboard."
+    echo -e ""
+    echo -e "        -as, --agent-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of the agent"
+    echo -e "                listener certificate of every Wazuh manager node. Repeat it for more"
+    echo -e "                than one. Use it for the address agents dial when the host cannot know"
+    echo -e "                it: a load balancer shared by a cluster, a published name, a NAT"
+    echo -e "                address. Must be used along with one of these options: -a, -g"
+    echo -e ""
+    echo -e "        -ap, --api-san <ip|dns>"
+    echo -e "                Adds an extra address to the subject alternative name of the Server"
+    echo -e "                API certificate of every Wazuh manager node. Repeat it for more than"
+    echo -e "                one. Use it for the address API clients dial when the host cannot know"
+    echo -e "                it: a load balancer, a published name, a NAT address."
+    echo -e "                Must be used along with one of these options: -a, -g"
+    echo -e ""
+    echo -e "        -d [pre-release|local],  --development"
+    echo -e "                Use development repositories. By default it uses the pre-release package repository. If local is specified, it will use a local artifact_urls.yml file located in the same path as the wazuh-install-5.0.0.sh."
+    echo -e ""
+    echo -e "        --skip-signature-check"
+    echo -e "                Install packages that are not signed with the Wazuh key. Only for development packages, must be used along with -d."
+    echo -e ""
+    echo -e "        -dw,  --download-wazuh <deb|rpm>"
+    echo -e "                Download all the packages necessary for offline installation. Type of packages to download for offline installation (rpm, deb)"
+    echo -e ""
+    echo -e "        -da,  --download-arch <amd64|arm64|x86_64|aarch64>"
+    echo -e "                Define the architecture of the packages to download for offline installation."
+    echo -e ""
+    echo -e "        -g,  --generate-config-files"
+    echo -e "                Generate wazuh-install-files.tar file containing the files that will be needed for installation from config.yml. In distributed deployments you will need to copy this file to all hosts."
+    echo -e ""
+    echo -e "        -h,  --help"
+    echo -e "                Display this help and exit."
+    echo -e ""
+    echo -e "        -id,  --install-dependencies"
+    echo -e "                Installs automatically the necessary dependencies for the installation."
+    echo -e ""
+    echo -e "        -o,  --overwrite"
+    echo -e "                Overwrites previously installed components. This will erase all the existing configuration and data."
+    echo -e ""
+    echo -e "        -of,  --offline-installation"
+    echo -e "                Perform an offline installation. This option must be used with -a, -wm, -s, -wi, or -wd."
+    echo -e ""
+    echo -e "        -s,  --start-cluster"
+    echo -e "                Initialize Wazuh indexer cluster security settings."
+    echo -e ""
+    echo -e "        -u,  --uninstall"
+    echo -e "                Uninstalls all Wazuh components. This will erase all the existing configuration and data."
+    echo -e ""
+    echo -e "        -v,  --verbose"
+    echo -e "                Shows the complete installation output."
+    echo -e ""
+    echo -e "        -V,  --version"
+    echo -e "                Shows the version of the script and Wazuh packages."
+    echo -e ""
+    echo -e "        -wd,  --wazuh-dashboard <dashboard-node-name>"
+    echo -e "                Install and configure Wazuh dashboard, used for distributed deployments."
+    echo -e ""
+    echo -e "        -wi,  --wazuh-indexer <indexer-node-name>"
+    echo -e "                Install and configure Wazuh indexer, used for distributed deployments."
+    echo -e ""
+    echo -e "        -wm,  --wazuh-manager <manager-node-name>"
+    echo -e "                Install and configure Wazuh manager, used for distributed deployments."
+    exit 1
+
+}
+
+
+function main() {
+    umask 177
+
+    if [ -z "${1}" ]; then
+        getHelp
+    fi
+
+    installCommon_logRunHeader "$@"
+
+    declare -a agent_san=()
+    declare -a api_san=()
+
+    while [ -n "${1}" ]
+    do
+        case "${1}" in
+            "-a"|"--all-in-one")
+                AIO=1
+                shift 1
+                ;;
+            "-as"|"--agent-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -as|--agent-san"
+                    getHelp
+                    exit 1
+                else
+                    agent_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-ap"|"--api-san")
+                if [[ -z "${2}" || "${2}" == -* ]]; then
+                    common_logger -e "Error on arguments. Probably missing <ip|dns> after -ap|--api-san"
+                    getHelp
+                    exit 1
+                else
+                    api_san+=("${2}")
+                    shift 2
+                fi
+                ;;
+            "-d"|"--development")
+                development=1
+                if [ -z "${2}" ] || [[ "${2}" == -* ]]; then
+                    devrepo="pre-release"
+                    bucket="packages-staging.xdrsiem.wazuh.info"
+                    shift 1
+                elif [ "${2}" = "pre-release" ] || [ "${2}" = "local" ]; then
+                    devrepo="${2}"
+                    bucket="packages-staging.xdrsiem.wazuh.info"
+                    shift 2
+                else
+                    common_logger -e "Error: Invalid value '${2}' after -d|--development. Accepted values are 'pre-release' or 'local'. If no value is specified, 'pre-release' is used by default."
+                    getHelp
+                    exit 1
+                fi
+                ;;
+            "-g"|"--generate-config-files")
+                configurations=1
+                shift 1
+                ;;
+            "-h"|"--help")
+                getHelp
+                ;;
+            "-id"|"--install-dependencies")
+                install_dependencies=1
+                shift 1
+                ;;
+            "-o"|"--overwrite")
+                overwrite=1
+                shift 1
+                ;;
+            "--skip-signature-check")
+                skip_signature_check=1
+                shift 1
+                ;;
+            "-of"|"--offline-installation")
+                offline_install=1
+                shift 1
+                ;;
+            "-s"|"--start-cluster")
+                start_indexer_cluster=1
+                shift 1
+                ;;
+            "-u"|"--uninstall")
+                uninstall=1
+                shift 1
+                ;;
+            "-v"|"--verbose")
+                debugEnabled=1
+                debug="2>&1 | tee -a ${logfile}"
+                shift 1
+                ;;
+            "-V"|"--version")
+                showVersion=1
+                shift 1
+                ;;
+            "-wd"|"--wazuh-dashboard")
+                if [ -z "${2}" ]; then
+                    common_logger -e "Error on arguments. Probably missing <node-name> after -wd|---wazuh-dashboard"
+                    getHelp
+                    exit 1
+                fi
+                dashboard=1
+                dashname="${2}"
+                shift 2
+                ;;
+            "-wi"|"--wazuh-indexer")
+                if [ -z "${2}" ]; then
+                    common_logger -e "Arguments contain errors. Probably missing <node-name> after -wi|--wazuh-indexer."
+                    getHelp
+                    exit 1
+                fi
+                indexer=1
+                indxname="${2}"
+                shift 2
+                ;;
+            "-wm"|"--wazuh-manager")
+                if [ -z "${2}" ]; then
+                    common_logger -e "Error on arguments. Probably missing <node-name> after -wm|--wazuh-manager"
+                    getHelp
+                    exit 1
+                fi
+                wazuh=1
+                winame="${2}"
+                shift 2
+                ;;
+            "-dw"|"--download-wazuh")
+                if [ "${2}" != "deb" ] && [ "${2}" != "rpm" ]; then
+                    common_logger -e "Error on arguments. Probably missing <deb|rpm> after -dw|--download-wazuh"
+                    getHelp
+                    exit 1
+                fi
+                download=1
+                package_type="${2}"
+                shift 2
+                ;;
+            "-da"|"--download-arch")
+                if [ "${2}" != "amd64" ] && [ "${2}" != "x86_64" ] && [ "${2}" != "arm64" ] && [ "${2}" != "aarch64" ]; then
+                    common_logger -e "Error on arguments. Probably missing <amd64|x86_64|arm64|aarch64> after -da|--download-arch"
+                    getHelp
+                    exit 1
+                fi
+                download_arch=1
+                arch="${2}"
+                shift 2
+                ;;
+            *)
+                echo "Unknown option: ${1}"
+                getHelp
+        esac
+    done
+
+    if [ -z "${download}" ] && [ -z "${showVersion}" ]; then
+        common_checkRoot
+    fi
+
+    if [ -n "${showVersion}" ]; then
+        common_logger "Wazuh version: ${wazuh_version}"
+        common_logger "Wazuh installation assistant version: ${wazuh_install_vesion}"
+        exit 0
+    fi
+
+    common_logger "Starting Wazuh installation assistant. Wazuh version: ${wazuh_version}"
+    common_logger "Verbose logging redirected to ${logfile}"
+
+# -------------- Uninstall case  ------------------------------------
+
+    common_checkSystem
+    common_checkInstalled
+    checks_arguments
+    cert_validateAgentSan
+    cert_validateApiSan
+    check_dist
+
+    if [ -z "${uninstall}" ] && [ -z "${offline_install}" ]; then
+        installCommon_scanDependencies
+        installCommon_installCheckDependencies "assistant"
+        installCommon_installCheckDependencies "wazuh"
+        installCommon_determinePorts
+    elif [ -n "${offline_install}" ]; then
+        offline_checkPrerequisites "wia_offline_dependencies" "${wia_offline_dependencies[@]}"
+    fi
+
+    if [ -n "${uninstall}" ]; then
+        common_logger "--- Removing existing Wazuh installation ---"
+        checks_uninstallComponents && uninstall_found=1
+        installCommon_rollBack
+        if [ -n "${uninstall_found}" ]; then
+            common_logger "Uninstall finished."
+        else
+            common_logger "Nothing to uninstall."
+        fi
+        exit 0
+    fi
+
+    checks_arch
+
+    common_logger "Verifying that your system meets the recommended minimum hardware requirements."
+    checks_health
+
+
+# -------------- Preliminary checks and Prerequisites --------------------------------
+
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
+        checks_previousCertificate
+    fi
+
+    if [ -n "${AIO}" ]; then
+        if [ -z "${offline_install}" ]; then
+            rm -f "${tar_file}"
+        fi
+        checks_ports "${wazuh_aio_ports[@]}"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "AIO"
+        fi
+    fi
+
+    if [ -n "${indexer}" ]; then
+        checks_ports "${wazuh_indexer_ports[@]}"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "indexer"
+        fi
+    fi
+
+    if [ -n "${wazuh}" ]; then
+        checks_ports "${wazuh_manager_ports[@]}"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "wazuh"
+        fi
+    fi
+
+    if [ -n "${dashboard}" ]; then
+        checks_ports "${wazuh_dashboard_port}"
+        if [ -n "${offline_install}" ]; then
+            offline_checkPrerequisites "dashboard"
+        fi
+    fi
+
+
+# --------------  Wazuh repo  ----------------------
+
+    # Offline installation case: extract the compressed files
+    if [ -n "${offline_install}" ]; then
+        offline_checkPreinstallation
+        offline_extractFiles
+    elif [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        check_curlVersion
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
+        fi
+        checks_ArtifactURLs_format
+        checks_ArtifactURLs_component_present
+    fi
+
+# -------------- Configuration creation case  -----------------------
+
+    # Creation certificate case: only -g creates certificates. On an all-in-one install
+    # the packages create the CA, their certificates and their passwords.
+    if [ -z "${offline_install}" ] && [ -n "${configurations}" ]; then
+        common_logger "--- Configuration files ---"
+        installCommon_createInstallFiles
+    fi
+
+    if [ -z "${configurations}" ] && [ -z "${AIO}" ] && [ -z "${download}" ]; then
+        installCommon_extractConfig
+        cert_readConfig
+    fi
+
+    # Distributed architecture: node names must be different
+    if [[ -z "${AIO}" && -z "${download}" && ( -n "${indexer}"  || -n "${dashboard}" || -n "${wazuh}" ) ]]; then
+        checks_names
+    fi
+
+    if [ -n "${configurations}" ]; then
+        installCommon_removeWIADependencies
+    fi
+
+# -------------- Packages ------------------------------------------
+
+    # Every package is downloaded and its signature checked before any of them is installed.
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_getPackages
+    fi
+
+# -------------- Wazuh indexer case -------------------------------
+
+    if [ -n "${indexer}" ]; then
+        common_logger "--- Wazuh indexer ---"
+        installCommon_placeCredentials "${indexer_credential_keys[@]}"
+        indexer_copyCertificates
+        indexer_install
+        indexer_configure
+        installCommon_startService "wazuh-indexer"
+        installCommon_removeWIADependencies
+    fi
+
+# -------------- Start Wazuh indexer cluster case  ------------------
+
+    if [ -n "${start_indexer_cluster}" ]; then
+        indexer_startCluster
+        installCommon_removeWIADependencies
+    fi
+
+# -------------- Wazuh dashboard case  ------------------------------
+
+    if [ -n "${dashboard}" ]; then
+        common_logger "--- Wazuh dashboard ----"
+        installCommon_placeCredentials "${dashboard_credential_keys[@]}"
+        dashboard_copyCertificates
+        dashboard_install
+        dashboard_configure
+        installCommon_startService "wazuh-dashboard"
+        dashboard_initialize
+        installCommon_removeWIADependencies
+
+    fi
+
+# -------------- Wazuh manager case  ---------------------------------------
+
+    if [ -n "${wazuh}" ]; then
+        common_logger "--- Wazuh manager ---"
+        installCommon_placeCredentials "${manager_credential_keys[@]}"
+        manager_copyCertificates
+        manager_install
+        manager_configure
+        if [ -n "${manager_node_types[*]}" ]; then
+            manager_startCluster
+        fi
+        installCommon_startService "wazuh-manager"
+        installCommon_removeWIADependencies
+    fi
+
+# -------------- AIO case  ------------------------------------------
+
+    if [ -n "${AIO}" ]; then
+
+        common_logger "--- Wazuh indexer ---"
+        indexer_install
+        indexer_configure
+        installCommon_startService "wazuh-indexer"
+        indexer_startCluster
+        common_logger "--- Wazuh manager ---"
+        manager_setRemotedSans
+        manager_setApidSans
+        manager_install
+        installCommon_startService "wazuh-manager"
+        common_logger "--- Wazuh dashboard ---"
+        dashboard_install
+        installCommon_startService "wazuh-dashboard"
+        dashboard_initialize
+        installCommon_removeWIADependencies
+
+    fi
+
+# -------------- Offline case  ------------------------------------------
+
+    if [ -n "${download}" ]; then
+        common_logger "--- Download Packages ---"
+        if [ -n "${development}" ] && [ "${devrepo}" = "local" ]; then
+            checks_localArtifactURLs_exists
+        else
+            installCommon_downloadArtifactURLs
+        fi
+        checks_ArtifactURLs_format
+        offline_checkArtifactURLs_component_present
+        offline_download
+    fi
+
+
+# -------------------------------------------------------------------
+
+    if [ -n "${install_tmp_path}" ]; then
+        eval "rm -rf ${install_tmp_path} ${debug}"
+    fi
+
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${dashboard}" ] || [ -n "${wazuh}" ]; then
+        installCommon_removeDownloadPackagesDirectory
+        common_logger "Installation finished."
+    elif [ -n "${start_indexer_cluster}" ]; then
+        common_logger "Wazuh indexer cluster started."
+    fi
+
+}

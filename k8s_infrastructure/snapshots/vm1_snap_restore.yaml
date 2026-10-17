@@ -1,0 +1,12 @@
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineRestore
+metadata:
+  name: restore-vm1-test
+  namespace: xdr-server
+spec:
+  target:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: vm1
+  virtualMachineSnapshotName: vm1-snap2
+

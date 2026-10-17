@@ -1,0 +1,19 @@
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: xdr-cluster
+nodes:
+  - role: control-plane
+  - role: worker
+    extraMounts:
+      - hostPath: /home/abdo/studying/Grad_projects/wazuh-docker/The_Full_Project/worker1
+        containerPath: /var/local-path-provisioner
+  - role: worker
+    extraMounts:
+      - hostPath: /home/abdo/studying/Grad_projects/wazuh-docker/The_Full_Project/worker2
+        containerPath: /var/local-path-provisioner
+
+networking:
+  ipFamily: dual
+  podSubnet: "10.245.0.0/16,2001:db8:1::/48"
+

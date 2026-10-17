@@ -1,0 +1,9 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+approvers:
+- kubernetes-csi-approvers
+- pohly
+- carlory
+
+reviewers:
+- kubernetes-csi-reviewers

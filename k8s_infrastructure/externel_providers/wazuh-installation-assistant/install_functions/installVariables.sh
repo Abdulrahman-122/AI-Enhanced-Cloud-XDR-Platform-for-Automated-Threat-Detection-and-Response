@@ -1,0 +1,67 @@
+# Wazuh installer - variables
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+## Package vars
+readonly wazuh_major="5"
+readonly wazuh_version="5.0.0"
+readonly wazuh_install_vesion="0.1"
+bucket="packages.wazuh.com"
+staging_url_stage=""
+
+## Links and paths to resources
+base_path="$(dirname "$(readlink -f "$0")")"
+readonly base_path
+config_file="${base_path}/config.yml"
+readonly tar_file_name="wazuh-install-files.tar"
+tar_file="${base_path}/${tar_file_name}"
+artifact_urls_file_name="artifact_urls.yaml"
+readonly artifact_urls_bucket_folder="artifact-urls"
+readonly download_packages_directory="wazuh-install-packages"
+
+readonly dashboard_cert_path="/etc/wazuh-dashboard/certs"
+readonly manager_cert_path="/var/wazuh-manager/etc/certs"
+readonly indexer_cert_path="/etc/wazuh-indexer/certs"
+readonly credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
+# The passwords each component needs: a node only receives the ones of its components.
+readonly indexer_credential_keys=( WAZUH_INDEXER_ADMIN_PASSWORD WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_INDEXER_MANAGER_PASSWORD )
+readonly dashboard_credential_keys=( WAZUH_INDEXER_KIBANASERVER_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
+readonly manager_credential_keys=( WAZUH_INDEXER_MANAGER_PASSWORD WAZUH_MANAGER_API_PASSWORD WAZUH_MANAGER_WUI_PASSWORD )
+
+readonly logfile="/var/log/wazuh-install.log"
+debug=">> ${logfile} 2>&1"
+readonly yum_lockfile="/var/run/yum.pid"
+readonly apt_lockfile="/var/lib/dpkg/lock"
+
+## Offline Installation vars
+readonly base_dest_folder="wazuh-offline"
+
+http_port=443
+wazuh_aio_ports=( 9200 9300 1514 1515 1516 1517 55000 "${http_port}")
+readonly wazuh_indexer_ports=( 9200 9300 )
+readonly wazuh_manager_ports=( 1514 1515 1516 1517 55000 )
+wazuh_dashboard_port="${http_port}"
+# `lsof` and `openssl` are installed separately
+wia_yum_dependencies=( systemd grep tar coreutils sed procps-ng gawk curl )
+readonly wia_apt_dependencies=( systemd grep tar coreutils sed procps gawk curl )
+# What each package requires, including what its credentials resolver uses. The offline
+# installation only checks these lists, and the assistant never removes a package in them.
+# diffutils is also needed before the install: the tar files are placed with cmp.
+readonly wazuh_yum_dependencies=( diffutils findutils gawk grep hostname iproute openssl sed util-linux )
+readonly wazuh_apt_dependencies=( apt-transport-https gnupg curl openssl iproute2 hostname util-linux diffutils )
+readonly indexer_yum_dependencies=( coreutils diffutils hostname iproute openssl procps-ng util-linux )
+readonly indexer_apt_dependencies=( debconf adduser procps openssl diffutils iproute2 )
+readonly dashboard_yum_dependencies=( libcap diffutils openssl util-linux )
+readonly dashboard_apt_dependencies=( tar curl libcap2-bin openssl diffutils )
+wia_offline_dependencies=( curl tar gnupg openssl )
+wia_dependencies_installed=()
+# Fingerprints accepted for the key that signs the Wazuh packages. Add the new one here,
+# next to the current one, if the key is ever replaced.
+readonly wazuh_gpg_key_fingerprints=( "0DCFCA5547B19D2A6099506096B3EE5F29111145" )
+readonly wazuh_gpg_key_url="https://packages.wazuh.com/key/GPG-KEY-WAZUH"
+assistant_yum_dependencies=( "${wia_yum_dependencies[@]}" )
+assistant_apt_dependencies=( "${wia_apt_dependencies[@]}" )

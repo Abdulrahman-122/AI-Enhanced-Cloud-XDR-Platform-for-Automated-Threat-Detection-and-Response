@@ -1,0 +1,12 @@
+apiVersion: snapshot.kubevirt.io/v1beta1
+kind: VirtualMachineSnapshot
+metadata:
+  name: vm1-snap2
+  namespace: xdr-server
+spec:
+  failureDeadline: 1h
+  source:
+    apiGroup: kubevirt.io
+    kind: VirtualMachine
+    name: vm1
+

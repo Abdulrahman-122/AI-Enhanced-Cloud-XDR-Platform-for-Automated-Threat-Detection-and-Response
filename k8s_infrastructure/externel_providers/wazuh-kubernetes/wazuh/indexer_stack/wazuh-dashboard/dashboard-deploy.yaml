@@ -1,0 +1,129 @@
+# Copyright (C) 2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+# Dashboard Deployment
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wazuh-dashboard
+  namespace: wazuh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wazuh-dashboard
+  template:
+    metadata:
+      labels:
+        app: wazuh-dashboard
+      name: wazuh-dashboard
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: dashboard-conf
+        - name: dashboard-certs
+          secret:
+            secretName: dashboard-certs
+      securityContext:
+        fsGroup: 101
+        runAsUser: 101
+        runAsGroup: 101
+      containers:
+        - name: wazuh-dashboard
+          image: 'wazuh/wazuh-dashboard:5.0.0-beta5'
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: dashboard-certs
+              mountPath: /usr/share/wazuh-dashboard/config/certs/dashboard.pem
+              readOnly: true
+              subPath: dashboard.pem
+            - name: dashboard-certs
+              mountPath: /usr/share/wazuh-dashboard/config/certs/dashboard-key.pem
+              readOnly: true
+              subPath: dashboard-key.pem
+            - name: dashboard-certs
+              mountPath: /usr/share/wazuh-dashboard/config/certs/root-ca.pem
+              subPath: root-ca.pem
+              readOnly: true
+          ports:
+            - containerPort: 443
+              name: dashboard
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl -k -s -o /dev/null https://localhost:443/login
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 12
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl -k -s -o /dev/null https://localhost:443/login
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl -k -s -o /dev/null https://localhost:443/login
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          env:
+            - name: OPENSEARCH_HOSTS
+              value: 'https://wazuh-indexer:9200'
+            - name: INDEXER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: indexer-cred
+                  key: username
+            - name: INDEXER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: indexer-cred
+                  key: password
+            - name: DASHBOARD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-cred
+                  key: username
+            - name: DASHBOARD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-cred
+                  key: password
+            - name: SERVER_SSL_ENABLED
+              value: "true"
+            - name: SERVER_SSL_CERTIFICATE
+              value: /usr/share/wazuh-dashboard/config/certs/dashboard.pem
+            - name: SERVER_SSL_KEY
+              value: /usr/share/wazuh-dashboard/config/certs/dashboard-key.pem
+            - name: OPENSEARCH_SSL_CERTIFICATE_AUTHORITIES
+              value: /usr/share/wazuh-dashboard/config/certs/root-ca.pem
+            - name: WAZUH_API_URL
+              value: https://wazuh-api
+            - name: API_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-api-cred
+                  key: username
+            - name: API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wazuh-api-cred
+                  key: password

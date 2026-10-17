@@ -1,0 +1,631 @@
+# Wazuh installer - checks.sh functions.
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+function checks_arch() {
+
+    common_logger -d "Checking system architecture."
+    architecture=$(uname -m)
+
+    if [ "${architecture}" == "x86_64" ] || [ "${architecture}" == "aarch64" ]; then
+        common_logger -d "System architecture: ${architecture}"
+    else
+        common_logger -e "Uncompatible system architecture: ${architecture}. Supported any 64-bit system"
+        exit 1
+    fi
+}
+
+function checks_arguments() {
+
+    # -------------- Repository selection ---------------------
+
+    if [ -n "${development}" ]; then
+        if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${download}" ]; then
+            common_logger -e "The -d|--development option must be used with -a, -wm, -s, -wi, -wd or -dw."
+            exit 1
+        fi
+    fi
+
+    if [ -n "${skip_signature_check}" ] && [ -z "${development}" ]; then
+        common_logger -e "The --skip-signature-check option must be used with -d|--development."
+        exit 1
+    fi
+
+    # -------------- Offline installation ---------------------
+
+    if [ -n "${offline_install}" ]; then
+        if [ -z "${AIO}" ] && [ -z "${dashboard}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ]; then
+            common_logger -e "The -of|--offline-installation option must be used with -a, -wm, -s, -wi, or -wd."
+            exit 1
+        fi
+    fi
+
+    if [ -n "${download}" ] && [ -z "${download_arch}" ]; then
+        common_logger -e "To download the packages it is necessary to set the architecture in -da|--download-arch <amd64|x86_64|arm64|aarch64>"
+        exit 1
+    fi
+
+    if [ -n "${download}" ] && [ -n "${download_arch}" ]; then
+        if [ "${package_type}" = "deb" ]; then
+            if [ "${arch}" != "amd64" ] && [ "${arch}" != "arm64" ]; then
+                if [ "${arch}" = "x86_64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use amd64 instead."
+                elif [ "${arch}" = "aarch64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use arm64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
+                exit 1
+            fi
+        elif [ "${package_type}" = "rpm" ]; then
+            if [ "${arch}" != "x86_64" ] && [ "${arch}" != "aarch64" ]; then
+                if [ "${arch}" = "amd64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use x86_64 instead."
+                elif [ "${arch}" = "arm64" ]; then
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}. Use aarch64 instead."
+                else
+                    common_logger -e "Architecture ${arch} not valid for package type ${package_type}"
+                fi
+                exit 1
+            fi
+        fi
+    fi
+
+    # -------------- Configurations ---------------------------------
+
+    if [ -f "${tar_file}" ]; then
+        if [ -n "${AIO}" ] && [ -z "${offline_install}" ]; then
+            rm -f "${tar_file}"
+        fi
+        if [ -n "${configurations}" ]; then
+            common_logger -e "File ${tar_file} already exists. Please remove it if you want to use a new configuration."
+            exit 1
+        fi
+    fi
+
+    if [[ -n "${configurations}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${start_indexer_cluster}" || -n "${uninstall}" ) ]]; then
+        common_logger -e "The argument -g|--generate-config-files can't be used with -a|--all-in-one, -o|--overwrite, -s|--start-cluster, -u|--uninstall, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
+        exit 1
+    fi
+
+    # -------------- Overwrite --------------------------------------
+
+    if [ -n "${overwrite}" ] && [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ]; then
+        common_logger -e "The argument -o|--overwrite must be used in conjunction with -a|--all-in-one, -wd|--wazuh-dashboard, -wi|--wazuh-indexer, or -wm|--wazuh-manager."
+        exit 1
+    fi
+
+    # -------------- Uninstall --------------------------------------
+
+    if [ -n "${uninstall}" ]; then
+
+        if [ -n "$AIO" ] || [ -n "$indexer" ] || [ -n "$dashboard" ] || [ -n "$wazuh" ]; then
+            common_logger -e "It is not possible to uninstall and install in the same operation. If you want to overwrite the components use -o|--overwrite."
+            exit 1
+        fi
+
+    fi
+
+    # -------------- All-In-One -------------------------------------
+
+    if [ -n "${AIO}" ]; then
+
+        if [ -n "$indexer" ] || [ -n "$dashboard" ] || [ -n "$wazuh" ]; then
+            common_logger -e "Argument -a|--all-in-one is not compatible with -wi|--wazuh-indexer, -wd|--wazuh-dashboard or -wm|--wazuh-manager."
+            exit 1
+        fi
+
+        if [ -n "${overwrite}" ]; then
+            installCommon_rollBack
+        fi
+
+        if  [ -z "${overwrite}" ] && { [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; }; then
+            common_logger -e "Wazuh manager already installed."
+            installedComponent=1
+        fi
+        if [ -z "${overwrite}" ] && { [ -n "${indexer_installed}" ] || [ -n "${indexer_remaining_files}" ]; };then
+            common_logger -e "Wazuh indexer already installed."
+            installedComponent=1
+        fi
+        if [ -z "${overwrite}" ] && { [ -n "${dashboard_installed}" ] || [ -n "${dashboard_remaining_files}" ]; }; then
+            common_logger -e "Wazuh dashboard already installed."
+            installedComponent=1
+        fi
+        if [ -n "${installedComponent}" ]; then
+            common_logger "If you want to overwrite the current installation, run this script adding the option -o/--overwrite. This will erase all the existing configuration and data."
+            exit 1
+        fi
+
+    fi
+
+    # -------------- Indexer ----------------------------------
+
+    if [ -n "${indexer}" ]; then
+
+        if [ -n "${indexer_installed}" ] || [ -n "${indexer_remaining_files}" ]; then
+            if [ -n "${overwrite}" ]; then
+                installCommon_rollBack
+            else
+                common_logger -e "Wazuh indexer is already installed in this node or some of its files have not been removed. Use option -o|--overwrite to overwrite all components."
+                exit 1
+            fi
+        fi
+    fi
+
+    # -------------- Wazuh dashboard --------------------------------
+
+    if [ -n "${dashboard}" ]; then
+        if [ -n "${dashboard_installed}" ] || [ -n "${dashboard_remaining_files}" ]; then
+            if [ -n "${overwrite}" ]; then
+                installCommon_rollBack
+            else
+                common_logger -e "Wazuh dashboard is already installed in this node or some of its files have not been removed. Use option -o|--overwrite to overwrite all components."
+                exit 1
+            fi
+        fi
+    fi
+
+    # -------------- Wazuh ------------------------------------------
+
+    if [ -n "${wazuh}" ]; then
+        if [ -n "${wazuh_installed}" ] || [ -n "${wazuh_remaining_files}" ]; then
+            if [ -n "${overwrite}" ]; then
+                installCommon_rollBack
+            else
+                common_logger -e "Wazuh manager components are already installed in this node or some of their files have not been removed. Use option -o|--overwrite to overwrite all components."
+                exit 1
+            fi
+        fi
+    fi
+
+    # -------------- Cluster start ----------------------------------
+
+    if [[ -n "${start_indexer_cluster}" && ( -n "${AIO}" || -n "${indexer}" || -n "${dashboard}" || -n "${wazuh}" || -n "${overwrite}" || -n "${configurations}" || -n "${uninstall}") ]]; then
+        common_logger -e "The argument -s|--start-cluster can't be used with -a|--all-in-one, -g|--generate-config-files,-o|--overwrite , -u|--uninstall, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager."
+        exit 1
+    fi
+
+    # -------------- Global -----------------------------------------
+
+    if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${dashboard}" ] && [ -z "${wazuh}" ] && [ -z "${start_indexer_cluster}" ] && [ -z "${configurations}" ] && [ -z "${uninstall}" ] && [ -z "${download}" ]; then
+        common_logger -e "At least one of these arguments is necessary -a|--all-in-one, -g|--generate-config-files, -wi|--wazuh-indexer, -wd|--wazuh-dashboard, -s|--start-cluster, -wm|--wazuh-manager, -u|--uninstall, -dw|--download-wazuh."
+        exit 1
+    fi
+
+}
+
+# Checks if the --retry-connrefused is available in curl
+function check_curlVersion() {
+
+    common_logger -d "Checking curl tool version."
+    # --retry-connrefused was added in 7.52.0
+    curl_version=$(curl -V | head -n 1 | awk '{ print $2 }')
+    if [ $(check_versions ${curl_version} 7.52.0) == "0" ]; then
+        curl_has_connrefused=0
+    fi
+
+}
+
+function check_dist() {
+    common_logger -d "Checking system distribution."
+    dist_detect
+    if  [ "${DIST_NAME}" != "rhel" ] &&
+        [ "${DIST_NAME}" != "amzn" ] && [ "${DIST_NAME}" != "ubuntu" ]; then
+        notsupported=1
+    fi
+
+    if [ "${DIST_NAME}" == "rhel" ] && { [ "${DIST_VER}" -ne "9" ] && [ "${DIST_VER}" -ne "10" ]; }; then
+        notsupported=1
+    fi
+
+    if [ "${DIST_NAME}" == "amzn" ]; then
+        if [ "${DIST_VER}" != "2023" ]; then
+            notsupported=1
+        else
+            checks_specialDepsAL2023
+        fi
+    fi
+
+    if [ "${DIST_NAME}" == "ubuntu" ]; then
+        if [ "${DIST_VER}" == "24" ] || [ "${DIST_VER}" == "26" ]; then
+            if [ "${DIST_SUBVER}" != "04" ]; then
+                notsupported=1
+            fi
+        else
+            notsupported=1
+        fi
+    fi
+
+    if [ -n "${notsupported}" ]; then
+        common_logger "The supported systems are: Red Hat Enterprise Linux 9, 10; Amazon Linux 2023; Ubuntu 24.04, 26.04."
+        common_logger -w "The current system does not match with the list of supported systems. The installation may not work properly."
+    fi
+    common_logger -d "Detected distribution name: ${DIST_NAME}"
+    common_logger -d "Detected distribution version: ${DIST_VER}"
+
+}
+
+# Reports the components that -u|--uninstall has nothing to remove for.
+# Returns 0 if any component, or any of its remaining files, was found, 1 otherwise.
+function checks_uninstallComponents() {
+
+    local found=1
+
+    if [ -z "${wazuh_installed}" ] && [ -z "${wazuh_remaining_files}" ]; then
+        common_logger "Wazuh manager not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${indexer_installed}" ] && [ -z "${indexer_remaining_files}" ]; then
+        common_logger "Wazuh indexer not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    if [ -z "${dashboard_installed}" ] && [ -z "${dashboard_remaining_files}" ]; then
+        common_logger "Wazuh dashboard not found in the system so it was not uninstalled."
+    else
+        found=0
+    fi
+
+    return ${found}
+
+}
+
+function checks_health() {
+
+    checks_specifications
+
+    common_logger -d "CPU cores detected: ${cores}"
+    common_logger -d "Total RAM memory detected: ${ram_gb} MB"
+
+    if [ -z "${AIO}" ] && [ -z "${indexer}" ] && [ -z "${wazuh}" ] && [ -z "${dashboard}" ]; then
+        return 0
+    fi
+
+    # Components the host will hold: the ones being installed plus the ones
+    # already installed (assisted per-component installs on the same host).
+    local host_components=()
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ] || [ -n "${indexer_installed}" ]; then
+        host_components+=("Wazuh indexer")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ] || [ -n "${wazuh_installed}" ]; then
+        host_components+=("Wazuh manager")
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ] || [ -n "${dashboard_installed}" ]; then
+        host_components+=("Wazuh dashboard")
+    fi
+
+    # Documented minimums: Wazuh indexer and Wazuh manager 8 GB and 4 cores,
+    # Wazuh dashboard 4 GB and 2 cores. Co-located components add up, capped
+    # at the documented all-in-one minimum (8 GB and 4 cores).
+    local required_ram=0 required_cores=0 component
+    for component in "${host_components[@]}"; do
+        case "${component}" in
+            "Wazuh dashboard") required_ram=$((required_ram + 4)); required_cores=$((required_cores + 2)) ;;
+            *) required_ram=$((required_ram + 8)); required_cores=$((required_cores + 4)) ;;
+        esac
+    done
+    if [ "${required_ram}" -gt 8 ]; then required_ram=8; fi
+    if [ "${required_cores}" -gt 4 ]; then required_cores=4; fi
+
+    # free -m reports less than the nominal size (kernel and firmware reserve
+    # memory), so allow 700 MB below each GB figure: 8 GB -> 7300 MB.
+    local required_ram_mb=$((required_ram * 1000 - 700))
+
+    common_logger -d "Components on this host: ${host_components[*]}. Required: ${required_ram} GB of RAM (${required_ram_mb} MB detected threshold) and ${required_cores} CPU cores."
+
+    if [ "${cores}" -lt "${required_cores}" ] || [ "${ram_gb}" -lt "${required_ram_mb}" ]; then
+        common_logger -w "Your system does not meet the recommended minimum hardware requirements of ${required_ram} GB of RAM and ${required_cores} CPU cores for the components on this host. The installation will continue, but it may not work properly."
+    fi
+
+}
+
+# This function ensures different names in the config.yml file.
+function checks_names() {
+
+    common_logger -d "Checking node names in the configuration file."
+    if [ -n "${indxname}" ] && [ -n "${dashname}" ] && [ "${indxname}" == "${dashname}" ]; then
+        common_logger -e "The node names for Wazuh indexer and Wazuh dashboard must be different."
+        exit 1
+    fi
+
+    if [ -n "${indxname}" ] && [ -n "${winame}" ] && [ "${indxname}" == "${winame}" ]; then
+        common_logger -e "The node names for Elastisearch and Wazuh must be different."
+        exit 1
+    fi
+
+    if [ -n "${winame}" ] && [ -n "${dashname}" ] && [ "${winame}" == "${dashname}" ]; then
+        common_logger -e "The node names for Wazuh manager and Wazuh indexer must be different."
+        exit 1
+    fi
+
+    if [ -n "${winame}" ] && ! echo "${manager_node_names[@]}" | grep -w -q "${winame}"; then
+        common_logger -e "The Wazuh manager node name ${winame} does not appear on the configuration file."
+        exit 1
+    fi
+
+    if [ -n "${indxname}" ] && ! echo "${indexer_node_names[@]}" | grep -w -q "${indxname}"; then
+        common_logger -e "The Wazuh indexer node name ${indxname} does not appear on the configuration file."
+        exit 1
+    fi
+
+    if [ -n "${dashname}" ] && ! echo "${dashboard_node_names[@]}" | grep -w -q "${dashname}"; then
+        common_logger -e "The Wazuh dashboard node name ${dashname} does not appear on the configuration file."
+        exit 1
+    fi
+
+    if [[ "${dashname}" == -* ]] || [[ "${indxname}" == -* ]] || [[ "${winame}" == -* ]]; then
+        common_logger -e "Node name cannot start with \"-\""
+        exit 1
+    fi
+
+}
+
+# Checks, before anything changes on the node, that the tar file has everything the
+# component of this node needs: the credentials file with valid passwords for it, the
+# root CA certificate and the certificate pairs of the node.
+function checks_previousCertificate() {
+    common_logger -d "Checking previous certificate existence."
+    if [ ! -f "${tar_file}" ]; then
+        common_logger -e "Cannot find ${tar_file}. Run the script with the option -g|--generate-config-files to create it or copy it from another node."
+        exit 1
+    fi
+
+    if [ -z "${indxname}" ] && [ -z "${dashname}" ] && [ -z "${winame}" ]; then
+        return 0
+    fi
+
+    checks_tarFiles "config.yml" "credentials.env" "root-ca.pem"
+
+    if [ -n "${indxname}" ]; then
+        checks_tarFiles "${indxname}.pem" "${indxname}-key.pem" "admin.pem" "admin-key.pem"
+        checks_tarPasswords "${indexer_credential_keys[@]}"
+    fi
+
+    if [ -n "${dashname}" ]; then
+        checks_tarFiles "${dashname}.pem" "${dashname}-key.pem"
+        checks_tarPasswords "${dashboard_credential_keys[@]}"
+    fi
+
+    if [ -n "${winame}" ]; then
+        checks_tarFiles "${winame}.pem" "${winame}-key.pem" "${winame}-remoted.pem" "${winame}-remoted-key.pem" \
+            "${winame}-apid.pem" "${winame}-apid-key.pem"
+        checks_tarPasswords "${manager_credential_keys[@]}"
+    fi
+}
+
+function checks_tarFiles() {
+
+    local file members
+
+    members=$(tar -tf "${tar_file}" 2>/dev/null)
+    for file in "$@"; do
+        if ! grep -q -x -F "wazuh-install-files/${file}" <<< "${members}"; then
+            common_logger -e "There is no ${file} in ${tar_file}. Create the file again with -g|--generate-config-files."
+            exit 1
+        fi
+    done
+
+}
+
+# The packages validate the passwords again when they are installed; this only makes a bad
+# tar fail before the node is changed.
+function checks_tarPasswords() {
+
+    local key value credentials
+
+    credentials=$(tar -xOf "${tar_file}" wazuh-install-files/credentials.env 2>/dev/null)
+    for key in "$@"; do
+        value=$(sed -nE "s/^${key}=\"?([^\"]*)\"?$/\1/p" <<< "${credentials}" | tail -n 1)
+        if [ -z "${value}" ]; then
+            common_logger -e "There is no ${key} in the credentials.env file of ${tar_file}."
+            exit 1
+        fi
+        if ! wazuh_password_validate "${value}" > /dev/null 2>&1; then
+            common_logger -e "The ${key} in the credentials.env file of ${tar_file} does not follow the password policy."
+            exit 1
+        fi
+    done
+
+}
+
+# Manages the special dependencies in case of AL2023
+function checks_specialDepsAL2023() {
+
+    # Change curl for curl-minimal
+    wia_yum_dependencies=( "${wia_yum_dependencies[@]/curl/curl-minimal}" )
+    assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/curl/curl-minimal}" )
+    wia_offline_dependencies=( "${wia_offline_dependencies[@]/curl/curl-minimal}" )
+
+    # In containers, coreutils is replaced for coreutils-single
+    if [ -f "/.dockerenv" ]; then
+        wia_yum_dependencies=( "${wia_yum_dependencies[@]/coreutils/coreutils-single}" )
+        assistant_yum_dependencies=( "${assistant_yum_dependencies[@]/coreutils/coreutils-single}" )
+    fi
+}
+
+function checks_specifications() {
+
+    cores=$(grep -c processor /proc/cpuinfo)
+    ram_gb=$(free -m | awk 'FNR == 2 {print $2}')
+
+}
+
+# Returns 0 if something is listening on the TCP port given as first argument.
+function checks_portInUse() {
+    if command -v lsof > /dev/null; then
+        lsof -sTCP:LISTEN -i:"${1}" > /dev/null
+    else
+        # ss always exits 0, so look at its output (the first line is the header)
+        [ -n "$(ss -ltn "sport = :${1}" 2>/dev/null | tail -n +2)" ]
+    fi
+}
+
+function checks_ports() {
+
+    common_logger -d "Checking ports availability."
+    used_port=0
+    ports=("$@")
+
+    checks_firewall "${ports[@]}"
+
+    if ! command -v lsof > /dev/null && ! command -v ss > /dev/null; then
+        common_logger -w "Cannot find lsof or ss. Port checking will be skipped."
+        return 1
+    fi
+
+    for i in "${!ports[@]}"; do
+        if checks_portInUse "${ports[i]}"; then
+            used_port=1
+            common_logger -e "Port ${ports[i]} is being used by another process. Please, check it before installing Wazuh."
+        fi
+    done
+
+    if [ "${used_port}" -eq 1 ]; then
+        common_logger "The installation can not continue due to port usage by other processes."
+        installCommon_rollBack
+        exit 1
+    fi
+
+}
+
+# Checks if the first version is greater equal than to second one
+function check_versions() {
+
+    if test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
+function checks_localArtifactURLs_exists() {
+    common_logger -d "Checking if ${artifact_urls_file_name} exists locally."
+    if [ ! -f "${base_path}/${artifact_urls_file_name}" ]; then
+        common_logger -e "Cannot find ${artifact_urls_file_name} in ${base_path}."
+        exit 1
+    fi
+}
+
+function checks_ArtifactURLs_format() {
+    common_logger -d "Checking ${artifact_urls_file_name} file format."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Check that all values are valid URLs
+    while IFS=': ' read -r key value; do
+        # Skip empty lines and comments
+        [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
+
+        # Remove quotes and whitespace from value
+        value=$(echo "$value" | tr -d '"' | xargs)
+
+        # Validate URL format (must start with https://)
+        if [[ ! "$value" =~ ^https:// ]]; then
+            common_logger -e "Invalid URL format for key '${key}': ${value}"
+            common_logger -e "All values in ${artifact_urls_file_name} must be valid URLs starting with https://"
+            exit 1
+        fi
+    done < "$artifact_file"
+}
+
+function checks_ArtifactURLs_component_present() {
+    common_logger -d "Checking required component is present in ${artifact_urls_file_name} file."
+    artifact_file="${base_path}/${artifact_urls_file_name}"
+    # Determine package type based on system
+    if [ "${sys_type}" == "yum" ]; then
+        pkg_type="rpm"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="x86_64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="aarch64"
+        fi
+    elif [ "${sys_type}" == "apt-get" ]; then
+        pkg_type="deb"
+        # Determine architecture suffix for artifact keys
+        if [ "${architecture}" == "x86_64" ]; then
+            arch_suffix="amd64"
+        elif [ "${architecture}" == "aarch64" ]; then
+            arch_suffix="arm64"
+        fi
+    fi
+
+    indexer_key="wazuh_indexer_${arch_suffix}_${pkg_type}"
+    dashboard_key="wazuh_dashboard_${arch_suffix}_${pkg_type}"
+    manager_key="wazuh_manager_${arch_suffix}_${pkg_type}"
+
+    # Check component-specific artifacts exist
+    if [ -n "${AIO}" ] || [ -n "${indexer}" ]; then
+        if ! grep -q "^${indexer_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${indexer_key}"
+            exit 1
+        fi
+    fi
+    if [ -n "${AIO}" ] || [ -n "${dashboard}" ]; then
+        if ! grep -q "^${dashboard_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${dashboard_key}"
+            exit 1
+        fi
+    fi
+    if [ -n "${AIO}" ] || [ -n "${wazuh}" ]; then
+        if ! grep -q "^${manager_key}:" "$artifact_file"; then
+            common_logger -e "Missing required artifact key: ${manager_key}"
+            exit 1
+        fi
+    fi
+}
+
+function checks_firewall(){
+    ports_list=("$@")
+    f_ports=""
+    f_message="The system has firewall enabled. Please ensure that traffic is allowed on "
+    firewalld_installed=0
+    ufw_installed=0
+
+
+    # Record of the ports that must be exposed according to the installation
+    if [ -n "${AIO}" ]; then
+        f_message+="these ports: 1515, 1517, 1514, ${http_port}"
+    elif [ -n "${dashboard}" ]; then
+        f_message+="this port: ${http_port}"
+    else
+        f_message+="these ports:"
+        for port in "${ports_list[@]}"; do
+            f_message+=" ${port},"
+        done
+
+        # Deletes last comma
+        f_message="${f_message%,}"
+    fi
+
+    # Check if the firewall is installed
+    if [ "${sys_type}" == "yum" ]; then
+        rpm -q firewalld --quiet && firewalld_installed=1
+        rpm -q ufw --quiet && ufw_installed=1
+    elif [ "${sys_type}" == "apt-get" ]; then
+        if apt list --installed 2>/dev/null | grep -q -E ^"firewalld"\/; then
+            firewalld_installed=1
+        fi
+        if apt list --installed 2>/dev/null | grep -q -E ^"ufw"\/; then
+            ufw_installed=1
+        fi
+    fi
+
+    # Check if the firewall is running
+    if [ "${firewalld_installed}" == "1" ]; then
+        if firewall-cmd --state 2>/dev/null | grep -q -w "running"; then
+            common_logger -w "${f_message/firewall/Firewalld}."
+        fi
+    fi
+    if [ "${ufw_installed}" == "1" ]; then
+        if ufw status 2>/dev/null | grep -q -w "active"; then
+            common_logger -w "${f_message/firewall/UFW}."
+        fi
+    fi
+
+}
