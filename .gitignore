@@ -1,3 +1,39 @@
+<<<<<<< HEAD
 k8s_infrastructure/external_providers
 k8s_infrastructure/images
 
+=======
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+portal.db
+test_api.db
+
+# Environment variables
+.env
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Node.js / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+>>>>>>> a782d11393cd4c5be1b26b60422dfb0e9ab1bc6f
