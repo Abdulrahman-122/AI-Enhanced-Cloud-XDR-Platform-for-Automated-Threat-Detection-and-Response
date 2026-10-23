@@ -94,3 +94,4 @@ kubectl delete hpa php-apache
 kubectl delete svc php-apache
 kubectl delete deployment php-apache
 ```
+link: https://artifacthub.io/packages/helm/metrics-server/metrics-server
