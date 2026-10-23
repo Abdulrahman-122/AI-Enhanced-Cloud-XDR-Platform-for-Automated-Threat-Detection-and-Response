@@ -57,7 +57,7 @@ kubectl apply -f \
 -now check the status of this provisioner
 kubectl rollout status deployment/local-path-provisioner \
   -n local-path-storage --timeout=120s
-
+- now check 
 kubectl get pods -n local-path-storage
 kubectl get sc wazuh-storage
 kubectl get pvc -n wazuh
@@ -81,3 +81,53 @@ kubectl describe pvc -n wazuh wazuh-indexer-wazuh-indexer-0
 
 ```
 - https://github.com/rancher/local-path-provisioner
+
+```
+- if you got API connection error("Error: getaddrinfo EBUSY wazuh-manager-master-0.wazuh-cluster) probably the problem due to : some configmaps,secrets that you didn't do yet
+1. Check what exists
+
+bash
+kubectl -n wazuh get configmap
+kubectl -n wazuh get secret
+
+Look for wazuh-conf, indexer-certs, wazuh-authd-pass, indexer-cred, wazuh-api-cred, and wazuh-cluster-key. Your pod references all of them.
+
+2. Create the missing configmap
+
+The config volume mounts master.conf from wazuh-conf. Your wazuh-master-sts.yml should define this, so check whether it’s in the repo:
+
+bash
+grep -rn "wazuh-conf" ~/path/to/wazuh_managers/
+
+If it exists in your files, apply it first:
+
+bash
+kubectl -n wazuh apply -f <file-with-configmap>.yaml
+
+If you don’t have it, create it from your master.conf (the manager’s ossec.conf):
+
+bash
+kubectl -n wazuh create configmap wazuh-conf --from-file=master.conf=./master.conf
+
+3. Create the indexer certificates secret
+
+indexer-certs must contain root-ca.pem, filebeat.pem, and filebeat-key.pem. Those are the keys the pod mounts, using these exact names. If the certs were generated for the indexer earlier, reuse them:
+
+bash
+kubectl -n wazuh create secret generic indexer-certs \
+  --from-file=root-ca.pem=./root-ca.pem \
+  --from-file=filebeat.pem=./filebeat.pem \
+  --from-file=filebeat-key.pem=./filebeat-key.pem
+
+4. Confirm the other secrets exist
+
+If indexer-cred, wazuh-api-cred, wazuh-cluster-key, or wazuh-authd-pass are missing, the pod will fail the same way. Create each one with kubectl create secret generic <name> --from-literal=<key>=<value>, using the key names from the describe output (username, password, key).
+
+5. Restart the StatefulSets
+
+bash
+kubectl -n wazuh delete pod wazuh-manager-master-0 wazuh-manager-worker-1
+kubectl -n wazuh get pods -w
+
+Once the master reaches Running and 1/1 Ready, the DNS name wazuh-manager-master-0.wazuh-cluster resolves, and the dashboard’s EBUSY error should stop.
+```
