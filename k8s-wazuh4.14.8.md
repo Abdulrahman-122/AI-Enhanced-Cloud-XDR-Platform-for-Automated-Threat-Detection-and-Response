@@ -75,3 +75,7 @@ kubectl describe pvc -n wazuh wazuh-indexer-wazuh-indexer-0
   -<img width="954" height="169" alt="image" src="https://github.com/user-attachments/assets/2e185473-14a4-4b3f-8bcf-48e1323a8a02" />
   - <img width="861" height="90" alt="image" src="https://github.com/user-attachments/assets/1b5f6304-99cc-4a97-8979-01afa4b3f668" />
 
+- note
+```
+- don't try to delete local-path-provisioner from your cluster as if your delete it -> your wazuh stuff can't extend the current storage (it's a dynamic storage provisioner for your pods..... )
+```
