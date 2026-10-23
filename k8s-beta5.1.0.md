@@ -6,7 +6,7 @@
 ### steps
 - the whole workflow 
 
-```
+```yml
 1.check the cluster first
 kubectl cluster-info
 kubectl get nodes -o wide
@@ -19,7 +19,7 @@ df -h
 
 ```
 
-```
+```yml
 3.clone the official repo with version v5.0.0 or any recent versions
 mkdir -p ~/projects/security
 cd ~/projects/security
@@ -37,7 +37,7 @@ cd wazuh-kubernetes
 git describe --tags
 ```
 
-```
+```yml
 #check whether github is accessable
 curl -fIL \
   https://raw.githubusercontent.com/wazuh/wazuh-installation-assistant/main/builder.sh
@@ -53,7 +53,7 @@ git tag -l '*5.0.0*'
 bash builder.sh -c
 ```
 
-```
+```yml
 #build the certificate and the password tools
 cd ~/projects/security/wazuh-installation-assistant
 
@@ -102,7 +102,7 @@ grep -RInE \
   'certificates-conf|credentials-conf|wazuh-certs-tool|WAZUH_CREDENTIALS_LIB' \
   README.md docs envs tools
 ```
-```
+```yml
 #create config.yaml inside : wazuh/config.yaml
 
 cat << 'EOF' > config.yaml
@@ -142,7 +142,7 @@ EOF
 
 ```
 
-```
+```yml
 #generate and copy the certificates
 
 cd wazuh
@@ -207,7 +207,7 @@ test -s /tmp/wazuh-rendered.yaml \
 
  ```
 
-```
+```yml
 #now check images on your docker images
 for image in \
   wazuh/wazuh-manager:5.0.0 \
