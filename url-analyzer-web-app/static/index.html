@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URL Sandbox Analyzer</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#121826; --panel2:#182033; --line:#243049; --text:#e6ebf5; --muted:#8a96ad;
+    --accent:#4dd4ac; --critical:#ff4d6d; --high:#ff8a3d; --medium:#f5c542; --low:#5aa9ff; --info:#8892a6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 18px 80px}
+  h1{font-size:22px;margin:0 0 4px} h1 span{color:var(--accent)}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=text]{flex:1;min-width:240px;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    padding:13px 14px;border-radius:10px;font-size:15px;outline:none}
+  input[type=text]:focus{border-color:var(--accent)}
+  button{background:var(--accent);color:#04201a;border:0;border-radius:10px;padding:0 22px;font-weight:700;font-size:15px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:wait}
+  .chips{margin:10px 0 0;color:var(--muted);font-size:13px}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:3px 11px;margin-left:6px;cursor:pointer;font-size:13px}
+  .chip:hover{border-color:var(--accent)}
+  .err{color:var(--critical);margin-top:12px}
+
+  .steps{display:flex;gap:6px;margin:26px 0 8px;flex-wrap:wrap}
+  .step{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:13px}
+  .step b{display:block;color:var(--text);font-size:14px}
+  .step.active{border-color:var(--accent);color:var(--accent)} .step.active b{color:var(--accent)}
+  .step.done{color:#6fe0bf} .step.done b::before{content:"\2713  "}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:16px}
+  .card h2{margin:0 0 10px;font-size:15px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+  .top{display:grid;grid-template-columns:240px 1fr;gap:18px}
+  @media(max-width:720px){.top{grid-template-columns:1fr}}
+  .gauge{background:var(--panel2);border-radius:12px;padding:18px;text-align:center}
+  .score{font-size:56px;font-weight:800;line-height:1}
+  .lvl{display:inline-block;margin-top:8px;padding:3px 12px;border-radius:999px;font-weight:700;font-size:13px;color:#08111f}
+  .mini{margin-top:14px;color:var(--muted);font-size:13px}
+  .summary{font-size:15px}
+  .shot{margin-top:12px;max-width:100%;border:1px solid var(--line);border-radius:10px;display:block}
+
+  .f{border-top:1px solid var(--line);padding:11px 0}
+  .f:first-of-type{border-top:0}
+  .sev{display:inline-block;min-width:68px;text-align:center;border-radius:6px;font-size:11px;font-weight:800;padding:2px 6px;color:#08111f;margin-right:8px;text-transform:uppercase}
+  .tag{color:var(--muted);font-size:12px;margin-left:8px}
+  .detail{color:var(--muted);font-size:13.5px;margin:4px 0 0 76px}
+  .ev{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:#0a0e16;border:1px solid var(--line);border-radius:6px;
+      padding:5px 8px;margin:5px 0 0 76px;color:#b8c3da;word-break:break-all}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td,th{text-align:left;padding:6px 8px;border-top:1px solid var(--line);word-break:break-all}
+  th{color:var(--muted);font-weight:600;border-top:0}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>URL <span>Sandbox</span> Analyzer</h1>
+  <p class="sub">Opens the URL in a disposable headless browser, records what it does, then scores the evidence.</p>
+
+  <form class="bar" id="form">
+    <input type="text" id="url" placeholder="https://example.com" autocomplete="off" spellcheck="false">
+    <button id="go" type="submit" style="height:46px">Analyze</button>
+  </form>
+  <div class="chips">Local demo targets:
+    <span class="chip" data-url="http://localhost:8001/safe">clean page</span>
+    <span class="chip" data-url="http://localhost:8001/gift">fake scam page</span>
+    <span style="margin-left:8px">(needs <code>ALLOW_PRIVATE=1</code> + <code>demo_server.py</code>)</span>
+  </div>
+  <div class="err hidden" id="err"></div>
+
+  <div class="steps hidden" id="steps">
+    <div class="step" data-s="queued"><b>Queued</b>job accepted</div>
+    <div class="step" data-s="detonating"><b>Detonation</b>browser opens URL</div>
+    <div class="step" data-s="analyzing"><b>Analysis</b>checks read evidence</div>
+    <div class="step" data-s="scoring"><b>Scoring</b>findings &rarr; score</div>
+    <div class="step" data-s="done"><b>Report</b>ready</div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const ORDER = ['queued','detonating','analyzing','scoring','done'];
+const COLORS = {critical:'var(--critical)',high:'var(--high)',medium:'var(--medium)',low:'var(--low)',info:'var(--info)',
+                Low:'#6fe0bf',Medium:'var(--medium)',High:'var(--high)',Critical:'var(--critical)',Good:'#6fe0bf',Fair:'var(--medium)',Poor:'var(--high)'};
+const $ = (id) => document.getElementById(id);
+
+// Safe DOM builder: everything from the analyzed page is inserted with textContent only.
+function el(tag, cls, text, kids){
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  (kids || []).forEach(k => n.appendChild(k));
+  return n;
+}
+
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('url').value = c.dataset.url; });
+$('form').onsubmit = async (e) => {
+  e.preventDefault();
+  $('err').classList.add('hidden'); $('out').replaceChildren();
+  const url = $('url').value.trim(); if (!url) return;
+  $('go').disabled = true;
+  try {
+    const r = await fetch('/api/analyze', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url})});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'request failed');
+    poll(j.id);
+  } catch (ex) { showErr(ex.message); $('go').disabled = false; }
+};
+function showErr(m){ $('err').textContent = m; $('err').classList.remove('hidden'); }
+
+function setStep(status){
+  $('steps').classList.remove('hidden');
+  const idx = ORDER.indexOf(status);
+  document.querySelectorAll('.step').forEach(s => {
+    const i = ORDER.indexOf(s.dataset.s);
+    s.classList.toggle('done', i < idx || status === 'done');
+    s.classList.toggle('active', i === idx && status !== 'done');
+  });
+}
+
+async function poll(id){
+  const j = await (await fetch('/api/jobs/' + id)).json();
+  if (j.status === 'error'){ showErr('Analysis failed: ' + j.error); $('go').disabled = false; return; }
+  setStep(j.status);
+  if (j.status !== 'done'){ setTimeout(() => poll(id), 600); return; }
+  render(j, id); $('go').disabled = false;
+}
+
+function section(title, kids){ return el('div','card',null,[el('h2',null,title), ...kids]); }
+
+function render(job, id){
+  const r = job.report, ev = r.evidence, out = $('out');
+
+  // verdict
+  const gauge = el('div','gauge',null,[
+    el('div','score', r.threat_score),
+    el('div','lvl', r.threat_level.toUpperCase()),
+    el('div','mini', 'Threat score  •  Hygiene ' + r.hygiene_score + '/100 (' + r.hygiene_level + ')')
+  ]);
+  gauge.querySelector('.score').style.color = COLORS[r.threat_level];
+  gauge.querySelector('.lvl').style.background = COLORS[r.threat_level];
+  const right = el('div',null,null,[
+    el('div','summary', r.summary),
+    el('div','mini', 'Landed on: ' + r.final_url + '   •   ' + ev.requests.length + ' requests, ' +
+        (ev.scripts.length + ev.inline_script_count) + ' scripts, ' + ev.downloads.length + ' downloads, ' + ev.elapsed_s + 's')
+  ]);
+  if (r.has_screenshot){ const im = el('img','shot'); im.src = '/api/jobs/' + id + '/screenshot.png'; im.alt = 'screenshot of the page'; right.appendChild(im); }
+  out.appendChild(el('div','card top',null,[gauge, right]));
+
+  // findings
+  const fl = r.findings.filter(f => f.severity !== 'info' || true).map(f => {
+    const head = el('div',null,null,[
+      Object.assign(el('span','sev', f.severity), {}),
+      el('b',null,f.title),
+      el('span','tag', f.group + ' • conf ' + f.confidence.toFixed(2))
+    ]);
+    head.firstChild.style.background = COLORS[f.severity];
+    const box = el('div','f',null,[head]);
+    if (f.detail) box.appendChild(el('div','detail', f.detail));
+    f.evidence.forEach(x => box.appendChild(el('div','ev', x)));
+    return box;
+  });
+  out.appendChild(section('Findings (' + r.findings.length + ')', fl.length ? fl : [el('div','mini','No findings.')]));
+
+  // redirect chain
+  if (ev.redirect_chain.length > 1){
+    const t = el('table',null,null,[el('tr',null,null,[el('th',null,'#'),el('th',null,'Status'),el('th',null,'URL')]),
+      ...ev.redirect_chain.map((c,i) => el('tr',null,null,[el('td',null,String(i+1)),el('td',null,String(c.status)),el('td','mono',c.url)]))]);
+    out.appendChild(section('Redirect chain', [t]));
+  }
+
+  // downloads
+  if (ev.downloads.length){
+    const t = el('table',null,null,[el('tr',null,null,[el('th',null,'File'),el('th',null,'Size'),el('th',null,'Detected as'),el('th',null,'SHA-256')]),
+      ...ev.downloads.map(d => el('tr',null,null,[el('td',null,d.filename),el('td',null,d.size + ' B'),el('td',null,d.magic),el('td','mono',d.sha256)]))]);
+    out.appendChild(section('Downloads (hashed then deleted, never executed)', [t]));
+  }
+
+  // domains contacted
+  const counts = {}; ev.requests.forEach(q => { counts[q.host] = (counts[q.host] || 0) + 1; });
+  const rows = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(([h,n]) => el('tr',null,null,[el('td','mono',h),el('td',null,String(n))]));
+  out.appendChild(section('Hosts contacted', [el('table',null,null,[el('tr',null,null,[el('th',null,'Host'),el('th',null,'Requests')]), ...rows])]));
+
+  // llm payload
+  out.appendChild(section('Payload for an AI summarizer (structured fields only, no raw page text)',
+    [el('pre','ev', JSON.stringify(r.llm_payload, null, 2))]));
+}
+</script>
+</body>
+</html>
