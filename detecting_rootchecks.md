@@ -22,3 +22,5 @@ lsmod | grep diamorpine          (it starts i cogintive mode)
 - on our XDR
   - <img width="1882" height="40" alt="image" src="https://github.com/user-attachments/assets/2dd492b7-9e4f-4571-b6e0-a1718b3da924" />
   - <img width="1306" height="875" alt="image" src="https://github.com/user-attachments/assets/0c252f8d-25bc-4c8b-9f9a-419125b0cc18" />
+
+- link: https://github.com/m0nad/Diamorphine
