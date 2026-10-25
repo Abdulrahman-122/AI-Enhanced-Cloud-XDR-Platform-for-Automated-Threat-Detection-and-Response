@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazuh-agent-endpoint
+  namespace: wazuh
+spec:
+  type: ClusterIP
+  selector:
+    app: wazuh-manager
+    node-type: master
+  ports:
+    - name: agent-endpoint
+      protocol: TCP
+      port: 1517
+      targetPort: 1517
