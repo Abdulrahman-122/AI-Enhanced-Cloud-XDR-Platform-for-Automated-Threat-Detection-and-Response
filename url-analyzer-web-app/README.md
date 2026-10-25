@@ -4,14 +4,14 @@ Opens a URL in a disposable headless Chromium, records everything the page does,
 independent checks on the recorded evidence, and produces an explainable risk score.
 Passive analysis only: it never attacks the target.
 
-## Quick start
+## 
 
 ```bash
 pip install -r requirements.txt
-python -m playwright install chromium
-
+python3 -m playwright install --with-deps chromium
 ./run.sh                      # demo site on :8001 + dashboard on :5000
 # open http://127.0.0.1:5000, click "fake scam page", press Analyze
+ssh -p 2222 -N -L 5000:127.0.0.1:5000 adam@127.0.0.1
 ```
 
 CLI instead of the dashboard:
@@ -58,8 +58,7 @@ sends the submitted URL to those services.
 - **Not tested here:** real internet sites (the build sandbox has no general internet), HTTPS
   through the proxy against a real server, the Dockerfile, and Kubernetes.
 
-## Limitations (be honest about these in your report)
-
+## Limitations
 - Sees only what the server sends to a browser. Backend source code (Flask, PHP...) is invisible.
 - Cloaking: malicious sites can behave differently for sandboxes/headless browsers. A clean
   result is not proof of safety.
