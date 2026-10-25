@@ -1,3 +1,3 @@
 # AI-Enhanced-Cloud-XDR-Platform-for-Automated-Threat-Detection-and-Response
-  ... to be completed.
+  - open source for free (anyone can build it for his stuff)
   
