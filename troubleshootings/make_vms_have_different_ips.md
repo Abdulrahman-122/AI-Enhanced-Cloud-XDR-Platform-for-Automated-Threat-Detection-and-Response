@@ -38,4 +38,14 @@ kubectl get vmi vm3 -w      # wait for Running and READY True
 
 Inside vm3:
 ip a  # you will get new ip
+
+or even:
+kubectl apply -f vm-name.yml
+virtctl restart vm-name
+kubectl get vmi vm-name -o wide -w
+
+#now see the result
+log into the vm by ssh then see
+#ip a
+
 ```
