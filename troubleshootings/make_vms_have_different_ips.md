@@ -45,7 +45,7 @@ virtctl restart vm-name
 kubectl get vmi vm-name -o wide -w
 
 #now see the result
-log into the vm by ssh then see
+# log into the vm by ssh then see
 #ip a
 
 ```
