@@ -1,6 +1,6 @@
 # problem that i faced when i built VMS using kubevirt on k8s
 - i added masquerade mode so that all Vms have the same ip however they don't conflict each other but this is not a good way for building a nework stuff
-- - so i tried to find a solution 
+  - so i tried to find a solution 
 
 Option 1: Bridge networking (unique IP per VM)
 
