@@ -27,3 +27,11 @@ sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin dock
 
 ```
 - https://docs.docker.com/engine/install/ubuntu/
+
+- How to install cloudflare and use it's tunnel feature to make your website public
+```yml
+   curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+   sudo dpkg -i cloudflared.deb
+   cloudflared --version
+  cloudflared tunnel --url http://localhost:8000
+```
