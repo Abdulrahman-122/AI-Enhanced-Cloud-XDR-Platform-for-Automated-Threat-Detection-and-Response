@@ -12,4 +12,5 @@
 - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/d247f6f9-f45d-49b6-904e-7d1f7853f22f" />
 4.Path traversal attack
   - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/a5b4f6e7-1bc9-45f8-a90d-31355f503b2a" />
-  
+  - <img width="1914" height="793" alt="image" src="https://github.com/user-attachments/assets/f128bbcd-6fdb-4733-9aa2-2c336a7483ba" />
+
