@@ -24,8 +24,14 @@
  - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b4587e6d-54a5-40c6-a620-a410c669af85" />
  - as you saw -> only the quote that okely made got to him in the attack while other quotes didn't show for him(this is a good security for our web server)
 
+6.Scanner style 404 brusts attack(scanning using nikto to see whether there are any hidden attacks on the website that any attacker can use to breach our webserver)
+  - <img width="947" height="707" alt="image" src="https://github.com/user-attachments/assets/be491718-9ac6-4b84-a055-3d4510cb8882" />
+  - after cleaning the stuff
+    - <img width="938" height="510" alt="image" src="https://github.com/user-attachments/assets/19a83ee4-dc96-41c6-af8f-016127c591c4" />
+
 
 - After applying most of these attacks here are the response from our backend
 - <img width="1901" height="719" alt="image" src="https://github.com/user-attachments/assets/5c2d6f6e-61a8-41c2-87db-fff2f2428b3c" />
+
 
 
