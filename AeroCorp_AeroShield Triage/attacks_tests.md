@@ -17,8 +17,13 @@
 4.Path traversal attack
   - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/a5b4f6e7-1bc9-45f8-a90d-31355f503b2a" />
   - <img width="1914" height="793" alt="image" src="https://github.com/user-attachments/assets/f128bbcd-6fdb-4733-9aa2-2c336a7483ba" />
+5. ID enumerations
+ - <img width="1725" height="829" alt="image" src="https://github.com/user-attachments/assets/d6f18711-fe3d-4cf6-b371-c86649bc1a9b" />
+ - <img width="1273" height="543" alt="image" src="https://github.com/user-attachments/assets/4e3a26f1-f18e-426e-ba20-899750efee3b" />
+ - <img width="1909" height="800" alt="image" src="https://github.com/user-attachments/assets/a6c8d932-f629-4290-af30-5e53e120d901" />
+ - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b4587e6d-54a5-40c6-a620-a410c669af85" />
+ - as you saw -> only the quote that okely made got to him in the attack while other quotes didn't show for him(this is a good security for our web server)
+
 
 - After applying most of these attacks here are the response from our backend
-  - <img width="1913" height="317" alt="image" src="https://github.com/user-attachments/assets/e1041e99-4acc-4906-8036-5d2c7dfe69a8" />
-  - <img width="1307" height="624" alt="image" src="https://github.com/user-attachments/assets/5ac58a48-7f16-4379-85c2-6cffa9dbd0e2" />
-    - the ip of that user will be blocked by about 15 mins before he try again.
+  - <img width="1913" height="317" alt="image" src="https://github.com/user-attachments/assets/
