@@ -563,133 +563,7 @@ def index():
     return PAGE
 
 
-        "monitor": get_state("monitor"),
-        "indexer": get_state("indexer"),
-        "alerts": alerts,
-        "attacks": attacks,
-        "high": high,
-        "last_alert": get_state("last_alert"),
-        "last_poll": get_state("last_poll"),
-    }
-
-
-@app.post("/api/monitor/{action}")
-def monitor_action(action: str):
-    if action not in ("start", "pause"):
-        raise HTTPException(404, "Unknown action")
-    running = action == "start"
-    set_state("monitor", "running" if running else "paused")
-    add_event("info", "Monitoring started." if running else
-              "Monitoring paused. Alerts will be checked when you start again.")
-    return {"monitor": get_state("monitor")}
-
-        "monitor": get_state("monitor"),
-        "indexer": get_state("indexer"),
-        "alerts": alerts,
-        "attacks": attacks,
-        "high": high,
-        "last_alert": get_state("last_alert"),
-        "last_poll": get_state("last_poll"),
-    }
-
-
-@app.post("/api/monitor/{action}")
-def monitor_action(action: str):
-    if action not in ("start", "pause"):
-        raise HTTPException(404, "Unknown action")
-    running = action == "start"
-    set_state("monitor", "running" if running else "paused")
-    add_event("info", "Monitoring started." if running else
-              "Monitoring paused. Alerts will be checked when you start again.")
-    return {"monitor": get_state("monitor")}
-
-
-@app.get("/api/attacks")
-def attacks():
-    with db() as c:
-        rows = c.execute(
-            "SELECT d.alert_id, d.category, d.name, d.severity, d.level, d.summary, d.details, "
-            "a.ts, a.rule_desc, a.srcip, a.agent FROM detections d JOIN alerts a ON a.id = d.alert_id "
-            "ORDER BY a.ts DESC LIMIT 100"
-        ).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["id"] = d.pop("alert_id")
-        d["details"] = json.loads(d["details"] or "{}")
-        out.append(d)
-    return out
-
-
-@app.get("/api/events")
-def events(after: int = 0):
-    with db() as c:
-        rows = c.execute(
-            "SELECT id, created, kind, text FROM events WHERE id > ? ORDER BY id DESC LIMIT 100",
-            (after,),
-        ).fetchall()
-    return [dict(r) for r in reversed(rows)]
-
-
-@app.get("/api/chats")
-def list_chats():
-    with db() as c:
-        rows = c.execute(
-            "SELECT id, title, created, pinned FROM chats ORDER BY pinned DESC, created DESC"
-        ).fetchall()
-    return [{**dict(r), "pinned": bool(r["pinned"])} for r in rows]
-
-
-@app.post("/api/chats")
-def create_chat():
-    cid = uuid.uuid4().hex
-    with db() as c:
-        c.execute("INSERT INTO chats(id, title, created, pinned) VALUES (?, ?, ?, 0)",
-                  (cid, "New chat", iso(now_utc())))
-    return {"id": cid, "title": "New chat"}
-@app.get("/api/attacks")
-def attacks():
-    with db() as c:
-        rows = c.execute(
-            "SELECT d.alert_id, d.category, d.name, d.severity, d.level, d.summary, d.details, "
-            "a.ts, a.rule_desc, a.srcip, a.agent FROM detections d JOIN alerts a ON a.id = d.alert_id "
-            "ORDER BY a.ts DESC LIMIT 100"
-        ).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["id"] = d.pop("alert_id")
-        d["details"] = json.loads(d["details"] or "{}")
-        out.append(d)
-    return out
-
-
-@app.get("/api/events")
-def events(after: int = 0):
-    with db() as c:
-        rows = c.execute(
-            "SELECT id, created, kind, text FROM events WHERE id > ? ORDER BY id DESC LIMIT 100",
-            (after,),
-        ).fetchall()
-    return [dict(r) for r in reversed(rows)]
-
-
-@app.get("/api/chats")
-def list_chats():
-    with db() as c:
-        rows = c.execute(
-            "SELECT id, title, created, pinned FROM chats ORDER BY pinned DESC, created DESC"
-        ).fetchall()
-    return [{**dict(r), "pinned": bool(r["pinned"])} for r in rows]
-
-
-@app.post("/api/chats")
-def create_chat():
-    cid = uuid.uuid4().hex
-    with db() as c:
-        c.execute("INSERT INTO chats(id, title, created, pinned) VALUES (?, ?, ?, 0)",
-                  (cid, "New chat", iso(now_utc())))
-    return {"id": cid, "title": "New chat"}@app.get("/api/status")
+@app.get("/api/status")
 def status():
     with db() as c:
         alerts = c.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
@@ -762,6 +636,7 @@ def create_chat():
         c.execute("INSERT INTO chats(id, title, created, pinned) VALUES (?, ?, ?, 0)",
                   (cid, "New chat", iso(now_utc())))
     return {"id": cid, "title": "New chat"}
+
 
 @app.get("/api/chats/{chat_id}")
 def get_chat(chat_id: str):
