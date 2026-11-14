@@ -1,0 +1,19 @@
+AEROCORP DATASHEET - Northrop Grumman RQ-4 Global Hawk
+============================================================
+Manufacturer : Northrop Grumman
+Category     : Long-endurance
+
+A high-altitude, long-endurance surveillance aircraft with a wingspan close to that of a small airliner. Flies at altitudes above commercial traffic for more than 30 hours.
+
+Specifications
+--------------
+Wingspan            : 39.9 m
+Endurance           : 32 h
+Max speed           : 575 km/h
+Service ceiling     : 18288 m
+Payload             : 1360 kg
+List price          : USD 1,314,000
+
+Source: https://www.northropgrumman.com/what-we-do/air/global-hawk
+
+Figures are approximate. Confirm with the manufacturer before purchase.

@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Baykar Bayraktar TB2
+============================================================
+Manufacturer : Baykar
+Category     : Long-endurance
+
+A medium-altitude, long-endurance unmanned aircraft with a pusher propeller and a V-shaped tail. Operated from short runways with a ground control station.
+
+Specifications
+--------------
+Flight time         : 1620 min
+Weight              : 650 kg
+Wingspan            : 12 m
+Camera              : Electro-Optical/Infrared (EO/IR) targeting turret with laser designator
+List price          : USD 5,000,000
+
+Source: https://www.baykartech.com/en/uav/bayraktar-tb2/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

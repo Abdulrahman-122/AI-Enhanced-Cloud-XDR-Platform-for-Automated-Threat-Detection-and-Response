@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - General Atomics MQ-9 Reaper
+============================================================
+Manufacturer : General Atomics
+Category     : Long-endurance
+
+A medium-altitude, long-endurance remotely piloted aircraft used for surveillance and reconnaissance. It can stay airborne for more than a day on one fuel load.
+
+Specifications
+--------------
+Flight time         : 1620 min
+Weight              : 2223 kg
+Wingspan            : 20.1 m
+Camera              : AN/DAS-1 MTS-B Multi-Spectral Targeting System (EO/IR/Laser Designator)
+List price          : USD 3,000,000
+
+Source: https://www.ga-asi.com/remotely-piloted-aircraft/mq-9a
+
+Figures are approximate. Confirm with the manufacturer before purchase.

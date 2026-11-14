@@ -1,0 +1,19 @@
+AEROCORP DATASHEET - DJI Mini 4 Pro
+============================================================
+Manufacturer : DJI
+Category     : Consumer & creator
+
+A sub-250 g folding drone with obstacle sensing in all directions. Light enough to fly under relaxed registration rules in many countries.
+
+Specifications
+--------------
+Flight time         : 34 min
+Max range           : 20 km
+Max speed           : 57 km/h
+Weight              : 0.249 kg
+Camera              : 1/1.3-inch, 4K/60 HDR
+List price          : USD 759
+
+Source: https://www.dji.com/mini-4-pro
+
+Figures are approximate. Confirm with the manufacturer before purchase.

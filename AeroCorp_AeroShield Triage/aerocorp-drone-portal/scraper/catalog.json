@@ -1,0 +1,126 @@
+[
+  {
+    "name": "DJI Mavic 3 Pro",
+    "manufacturer": "DJI",
+    "category": "Consumer & creator",
+    "wiki_title": "DJI Mavic 3",
+    "source_url": "https://www.dji.com/mavic-3-pro"
+  },
+  {
+    "name": "DJI Mini 4 Pro",
+    "manufacturer": "DJI",
+    "category": "Consumer & creator",
+    "wiki_title": "DJI Mini",
+    "source_url": "https://www.dji.com/mini-4-pro"
+  },
+  {
+    "name": "DJI Avata 2",
+    "manufacturer": "DJI",
+    "category": "FPV & racing",
+    "wiki_title": "DJI Avata",
+    "source_url": "https://www.dji.com/avata-2"
+  },
+  {
+    "name": "DJI Matrice 350 RTK",
+    "manufacturer": "DJI",
+    "category": "Enterprise inspection",
+    "wiki_title": "DJI Matrice 300 RTK",
+    "source_url": "https://enterprise.dji.com/matrice-350-rtk"
+  },
+  {
+    "name": "Skydio X10",
+    "manufacturer": "Skydio",
+    "category": "Enterprise inspection",
+    "wiki_title": "Skydio",
+    "source_url": "https://www.skydio.com/x10"
+  },
+  {
+    "name": "Parrot ANAFI USA",
+    "manufacturer": "Parrot",
+    "category": "Enterprise inspection",
+    "wiki_title": "Parrot Anafi",
+    "source_url": "https://www.parrot.com/en/drones/anafi-usa"
+  },
+  {
+    "name": "Autel EVO Max 4T",
+    "manufacturer": "Autel Robotics",
+    "category": "Enterprise inspection",
+    "wiki_title": "Autel Robotics",
+    "source_url": "https://www.autelrobotics.com/"
+  },
+  {
+    "name": "WingtraOne GEN II",
+    "manufacturer": "Wingtra",
+    "category": "Mapping & survey",
+    "wiki_title": "Wingtra",
+    "source_url": "https://wingtra.com/mapping-drone-wingtraone/"
+  },
+  {
+    "name": "Quantum-Systems Trinity F90+",
+    "manufacturer": "Quantum-Systems",
+    "category": "Mapping & survey",
+    "wiki_title": "Quantum-Systems",
+    "source_url": "https://quantum-systems.com/trinity-f90/"
+  },
+  {
+    "name": "senseFly eBee X",
+    "manufacturer": "AgEagle (senseFly)",
+    "category": "Mapping & survey",
+    "wiki_title": "SenseFly eBee",
+    "source_url": "https://ageagle.com/drones/ebee-x/"
+  },
+  {
+    "name": "DJI Agras T40",
+    "manufacturer": "DJI",
+    "category": "Agriculture",
+    "wiki_title": "DJI Agras",
+    "source_url": "https://ag.dji.com/t40"
+  },
+  {
+    "name": "DJI Agras T50",
+    "manufacturer": "DJI",
+    "category": "Agriculture",
+    "source_url": "https://ag.dji.com/t50"
+  },
+  {
+    "name": "Zipline P1 (Zip)",
+    "manufacturer": "Zipline",
+    "category": "Delivery & logistics",
+    "wiki_title": "Zipline (drone delivery)",
+    "source_url": "https://www.zipline.com/"
+  },
+  {
+    "name": "Zipline Platform 2",
+    "manufacturer": "Zipline",
+    "category": "Delivery & logistics",
+    "source_url": "https://www.zipline.com/"
+  },
+  {
+    "name": "General Atomics MQ-9 Reaper",
+    "manufacturer": "General Atomics",
+    "category": "Long-endurance",
+    "wiki_title": "General Atomics MQ-9 Reaper",
+    "source_url": "https://www.ga-asi.com/remotely-piloted-aircraft/mq-9a"
+  },
+  {
+    "name": "Northrop Grumman RQ-4 Global Hawk",
+    "manufacturer": "Northrop Grumman",
+    "category": "Long-endurance",
+    "wiki_title": "Northrop Grumman RQ-4 Global Hawk",
+    "source_url": "https://www.northropgrumman.com/what-we-do/air/global-hawk"
+  },
+  {
+    "name": "Baykar Bayraktar TB2",
+    "manufacturer": "Baykar",
+    "category": "Long-endurance",
+    "wiki_title": "Bayraktar TB2",
+    "source_url": "https://www.baykartech.com/en/uav/bayraktar-tb2/"
+  },
+  {
+    "name": "Insitu ScanEagle",
+    "manufacturer": "Insitu (Boeing)",
+    "category": "Long-endurance",
+    "wiki_title": "Boeing Insitu ScanEagle",
+    "source_url": "https://www.insitu.com/"
+  }
+]

@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Zipline Platform 2
+============================================================
+Manufacturer : Zipline
+Category     : Delivery & logistics
+
+A two-part system: a fixed-wing aircraft that cruises to the area, and a small tethered unit that lowers the parcel to the doorstep. Built for quiet, precise home delivery.
+
+Specifications
+--------------
+Flight time         : 20 min
+Weight              : 25 kg
+Wingspan            : 2.4 m
+Camera              : Integrated smart computer-vision guidance sensors on the descending delivery Droid
+List price          : USD 100,000
+
+Source: https://www.zipline.com/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

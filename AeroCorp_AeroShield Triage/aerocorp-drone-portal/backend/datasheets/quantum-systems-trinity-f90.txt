@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Quantum-Systems Trinity F90+
+============================================================
+Manufacturer : Quantum-Systems
+Category     : Mapping & survey
+
+A tilt-rotor VTOL mapping drone with long endurance and swappable payloads. Aimed at corridor mapping, forestry and large construction sites.
+
+Specifications
+--------------
+Flight time         : 90 min
+Weight              : 5 kg
+Wingspan            : 2.394 m
+Camera              : Swappable (Sony RX1R II, Sony UMC, MicaSense RedEdge, or Qube 240 LiDAR)
+List price          : USD 28,550
+
+Source: https://quantum-systems.com/trinity-f90/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

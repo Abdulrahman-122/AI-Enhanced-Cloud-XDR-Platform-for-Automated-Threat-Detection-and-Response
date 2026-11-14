@@ -1,0 +1,20 @@
+<!--
+  AeroCorp portal decoder.
+  Put this on the Wazuh MANAGER at:  /var/ossec/etc/decoders/local_decoder.xml
+  It lets the rules compare client IPs (same_source_ip) for events written by the portal's app.log.
+  NGINX access lines are already decoded by Wazuh's built-in web access-log decoder.
+-->
+<group name="aerocorp,">
+
+  <decoder name="aerocorp-app">
+    <prematch>"app": "aerocorp-portal"</prematch>
+  </decoder>
+
+  <decoder name="aerocorp-app-ip">
+    <parent>aerocorp-app</parent>
+    <prematch>"client_ip": "</prematch>
+    <regex>"client_ip": "(\d+.\d+.\d+.\d+)"</regex>
+    <order>srcip</order>
+  </decoder>
+
+</group>

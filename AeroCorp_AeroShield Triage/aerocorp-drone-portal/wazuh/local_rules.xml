@@ -1,0 +1,204 @@
+<!--
+  AeroCorp Drone Portal - Wazuh custom rules (IDs 100100-100199).
+  Put this on the Wazuh MANAGER at:  /var/ossec/etc/rules/local_rules.xml
+
+  Two log sources feed these rules:
+    app.log    -> JSON lines written by the FastAPI app (event names such as auth_failed, suspicious_input)
+    access.log -> NGINX combined access log (status codes, paths, query strings, user agents)
+
+  Rules that use <match> alone read the whole log line. Rules with <if_sid> or <if_matched_sid> build on
+  the rule named inside. Validate every pattern with:  /var/ossec/bin/wazuh-logtest
+  (paste the lines from wazuh/logtest-samples.txt).
+-->
+
+<group name="aerocorp,web,">
+
+  <!-- ===================== Base events from the application (app.log) ===================== -->
+
+  <rule id="100100" level="3">
+    <match>"event": "auth_failed"</match>
+    <description>AeroCorp app: staff sign-in failed</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100101" level="3">
+    <match>"event": "suspicious_input"</match>
+    <description>AeroCorp app: attack pattern found in request input</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100102" level="3">
+    <match>"found": false</match>
+    <description>AeroCorp app: quote lookup for an ID that does not exist (or wrong token)</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100103" level="3">
+    <match>"event": "rate_limited"</match>
+    <description>AeroCorp app: request blocked by rate limit</description>
+  </rule>
+
+  <rule id="100104" level="3">
+    <match>"event": "contact_submitted"</match>
+    <description>AeroCorp app: contact form submitted</description>
+  </rule>
+
+  <rule id="100105" level="3">
+    <match>"event": "newsletter_subscribed"</match>
+    <description>AeroCorp app: newsletter subscription</description>
+  </rule>
+
+  <rule id="100106" level="5">
+    <match>"event": "db_error"</match>
+    <description>AeroCorp app: database error returned to the client (possible SQL injection)</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100107" level="6">
+    <match>"event": "unhandled_error"</match>
+    <description>AeroCorp app: unhandled server error</description>
+  </rule>
+
+  <rule id="100108" level="12">
+    <match>"event": "account_locked"</match>
+    <description>AeroCorp app: staff account locked after repeated failed sign-ins</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100109" level="3">
+    <match>"reason": "unknown_user"</match>
+    <description>AeroCorp app: sign-in attempt for a username that does not exist</description>
+    <mitre><id>T1589</id></mitre>
+  </rule>
+
+  <!-- ===================== Application-level correlation ===================== -->
+
+  <rule id="100110" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>100100</if_matched_sid>
+    <same_source_ip />
+    <description>Brute force: 8 or more failed staff sign-ins from one IP in 2 minutes</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100111" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>100109</if_matched_sid>
+    <same_source_ip />
+    <description>Username enumeration or credential stuffing: 5 or more unknown usernames from one IP in 2 minutes</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100120" level="12">
+    <if_sid>100101</if_sid>
+    <match>"sqli"</match>
+    <description>Attack: SQL injection pattern in a request (app layer)</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100121" level="12">
+    <if_sid>100101</if_sid>
+    <match>"xss"</match>
+    <description>Attack: cross-site scripting pattern in a request (app layer)</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100122" level="12">
+    <if_sid>100101</if_sid>
+    <match>"traversal"</match>
+    <description>Attack: path traversal pattern in a request (app layer)</description>
+    <mitre><id>T1083</id></mitre>
+  </rule>
+
+  <rule id="100131" level="10" frequency="15" timeframe="120">
+    <if_matched_sid>100102</if_matched_sid>
+    <same_source_ip />
+    <description>IDOR / ID enumeration: 15 or more missing quote IDs probed from one IP in 2 minutes</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100132" level="8" frequency="3" timeframe="300">
+    <if_matched_sid>100103</if_matched_sid>
+    <same_source_ip />
+    <description>Client repeatedly hitting the rate limit (possible bot or flood)</description>
+  </rule>
+
+  <rule id="100133" level="8" frequency="5" timeframe="60">
+    <if_matched_sid>100104</if_matched_sid>
+    <same_source_ip />
+    <description>Contact form flood: 5 or more submissions from one IP in 1 minute (bot or spam)</description>
+  </rule>
+
+  <rule id="100134" level="8" frequency="10" timeframe="300">
+    <if_matched_sid>100105</if_matched_sid>
+    <same_source_ip />
+    <description>Newsletter sign-up flood: 10 or more subscriptions from one IP in 5 minutes (bot)</description>
+  </rule>
+
+  <!-- ===================== Web access log (NGINX, access.log) ===================== -->
+
+  <rule id="100150" level="10">
+    <match>GET /.env</match>
+    <description>Honeytoken hit: /.env requested (scanner looking for secrets)</description>
+    <mitre><id>T1083</id></mitre>
+  </rule>
+
+  <rule id="100151" level="10">
+    <match>GET /backup/</match>
+    <description>Honeytoken hit: backup file requested (scanner looking for database dumps)</description>
+    <mitre><id>T1083</id></mitre>
+  </rule>
+
+  <rule id="100152" level="3">
+    <match>HTTP/1.1" 404</match>
+    <description>Web: 404 Not Found</description>
+  </rule>
+
+  <rule id="100153" level="10" frequency="30" timeframe="60">
+    <if_matched_sid>100152</if_matched_sid>
+    <same_source_ip />
+    <description>Active scanning: 30 or more 404 responses from one IP in 1 minute</description>
+    <mitre><id>T1595</id></mitre>
+  </rule>
+
+  <rule id="100154" level="10">
+    <match>sqlmap|nikto|nmap|gobuster|dirbuster|wfuzz|masscan|hydra</match>
+    <description>Known attack or scanning tool in the User-Agent header</description>
+    <mitre><id>T1595</id></mitre>
+  </rule>
+
+  <rule id="100155" level="6">
+    <match>POST /api/auth/login HTTP/1.1" 401</match>
+    <description>Web: failed login request (HTTP 401) on /api/auth/login</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100156" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>100155</if_matched_sid>
+    <same_source_ip />
+    <description>Brute force on the login endpoint (web layer): 10 or more 401s from one IP in 2 minutes</description>
+    <mitre><id>T1110</id></mitre>
+  </rule>
+
+  <rule id="100157" level="8">
+    <match>/api/admin/\S* HTTP/1.1" 40</match>
+    <description>Staff API requested without valid authorisation (HTTP 401 or 403)</description>
+    <mitre><id>T1078</id></mitre>
+  </rule>
+
+  <rule id="100158" level="12">
+    <match>file=\S*\.\.|file=\S*%2e%2e|file=\S*%2E%2E</match>
+    <description>Path traversal attempt on the datasheet download (web layer)</description>
+    <mitre><id>T1083</id></mitre>
+  </rule>
+
+  <rule id="100159" level="12">
+    <match>q=\S*UNION|q=\S*%27|q=\S*%3Cscript|q=\S*%3cscript|q=\S*onerror</match>
+    <description>Search query carries SQL injection or XSS payload (web layer)</description>
+    <mitre><id>T1190</id></mitre>
+  </rule>
+
+  <rule id="100160" level="10">
+    <match>HTTP/1.1" 500</match>
+    <description>Web: server error (HTTP 500) returned to a client</description>
+  </rule>
+
+</group>

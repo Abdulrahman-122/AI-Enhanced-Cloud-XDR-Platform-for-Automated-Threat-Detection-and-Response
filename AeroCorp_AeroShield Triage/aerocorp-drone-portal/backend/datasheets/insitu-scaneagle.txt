@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Insitu ScanEagle
+============================================================
+Manufacturer : Insitu (Boeing)
+Category     : Long-endurance
+
+A small catapult-launched aircraft that is caught in flight by a hanging rope on landing, so it needs no runway. Flies day-long surveillance missions from ships and remote sites.
+
+Specifications
+--------------
+Flight time         : 1200 min
+Weight              : 13 kg
+Wingspan            : 3.1 m
+Camera              : Inertially stabilized electro-optical or infrared turret systems
+List price          : USD 3,000,000
+
+Source: https://www.insitu.com/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

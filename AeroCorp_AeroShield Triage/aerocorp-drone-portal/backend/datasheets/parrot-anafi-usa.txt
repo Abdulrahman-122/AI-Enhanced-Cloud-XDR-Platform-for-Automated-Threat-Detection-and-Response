@@ -1,0 +1,19 @@
+AEROCORP DATASHEET - Parrot ANAFI USA
+============================================================
+Manufacturer : Parrot
+Category     : Enterprise inspection
+
+A compact folding drone built for government and enterprise use, with a 32x zoom camera and a thermal sensor. Designed and manufactured with a secure data-handling approach.
+
+Specifications
+--------------
+Flight time         : 32 min
+Max range           : 4 km
+Max speed           : 55 km/h
+Weight              : 0.5 kg
+Camera              : 32x zoom + thermal
+List price          : USD 7,000
+
+Source: https://www.parrot.com/en/drones/anafi-usa
+
+Figures are approximate. Confirm with the manufacturer before purchase.

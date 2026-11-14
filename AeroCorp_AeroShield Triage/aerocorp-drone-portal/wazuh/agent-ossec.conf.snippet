@@ -1,0 +1,27 @@
+<!--
+  AeroCorp Drone Portal - Wazuh AGENT configuration.
+  Add these blocks inside <ossec_config> in the agent's ossec.conf on the machine that runs Docker
+  (Linux: /var/ossec/etc/ossec.conf). Change the paths to where you unzipped the project.
+  Then restart the agent:  systemctl restart wazuh-agent
+-->
+<ossec_config>
+
+  <!-- Staff, search, contact, quote and attack events written by the FastAPI app -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/home/YOU/aerocorp-drone-portal/logs/app/app.log</location>
+  </localfile>
+
+  <!-- Every HTTP request through NGINX (combined format) -->
+  <localfile>
+    <log_format>apache</log_format>
+    <location>/home/YOU/aerocorp-drone-portal/logs/nginx/access.log</location>
+  </localfile>
+
+  <!-- NGINX errors -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/home/YOU/aerocorp-drone-portal/logs/nginx/error.log</location>
+  </localfile>
+
+</ossec_config>

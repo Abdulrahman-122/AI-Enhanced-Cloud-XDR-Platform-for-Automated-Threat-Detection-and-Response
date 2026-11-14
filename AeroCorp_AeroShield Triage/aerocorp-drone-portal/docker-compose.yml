@@ -1,0 +1,67 @@
+# AeroCorp Drone Portal - lab stack
+#   db       PostgreSQL 16, creates the app and read-only roles on first start (db/init)
+#   backend  FastAPI (uvicorn). Not published to the host: only NGINX can reach it.
+#   nginx    Serves the built React app and proxies /api to the backend.
+#
+# Start:  cp .env.example .env   (edit the passwords)
+#         (cd frontend && npm ci && npm run build)
+#         docker compose up -d --build
+# Open:   http://localhost:8080
+
+name: aerocorp
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      RO_DB_PASSWORD: ${RO_DB_PASSWORD:?set RO_DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    environment:
+      VULN_MODE: ${VULN_MODE:-true}
+      DATABASE_URL: postgresql+psycopg2://aerocorp_app:${APP_DB_PASSWORD}@db:5432/aerocorp
+      DATABASE_URL_RO: postgresql+psycopg2://aerocorp_ro:${RO_DB_PASSWORD}@db:5432/aerocorp
+      SECRET_KEY: ${SECRET_KEY:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      MEDIA_DIR: /srv/media
+      DATASHEET_DIR: /srv/datasheets
+      LOG_DIR: /var/log/aerocorp
+    volumes:
+      - ./backend/media:/srv/media
+      - ./backend/datasheets:/srv/datasheets
+      - ./logs/app:/var/log/aerocorp
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      # Localhost only: cloudflared on this machine is the only thing that should reach NGINX.
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./backend/media:/srv/media:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

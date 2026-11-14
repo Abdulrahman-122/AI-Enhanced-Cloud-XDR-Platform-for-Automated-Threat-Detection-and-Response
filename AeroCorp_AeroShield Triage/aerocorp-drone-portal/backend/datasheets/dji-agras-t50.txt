@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - DJI Agras T50
+============================================================
+Manufacturer : DJI
+Category     : Agriculture
+
+The next step up in the Agras line, with a larger spreading hopper and a dual-atomising spray system. Designed for orchards, paddies and large open fields.
+
+Specifications
+--------------
+Flight time         : 22 min
+Weight              : 39.9 kg
+Wingspan            : 2.2 m
+Camera              : 12MP Ultra-HD adjustable FPV camera
+List price          : USD 17,999
+
+Source: https://ag.dji.com/t50
+
+Figures are approximate. Confirm with the manufacturer before purchase.

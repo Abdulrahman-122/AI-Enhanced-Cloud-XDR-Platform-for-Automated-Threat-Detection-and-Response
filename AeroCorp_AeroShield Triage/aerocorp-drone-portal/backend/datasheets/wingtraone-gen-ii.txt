@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - WingtraOne GEN II
+============================================================
+Manufacturer : Wingtra
+Category     : Mapping & survey
+
+A vertical take-off fixed-wing drone for survey-grade mapping. It lifts off like a helicopter, flies like a plane and covers large areas in one battery.
+
+Specifications
+--------------
+Flight time         : 59 min
+Weight              : 3.7 kg
+Wingspan            : 1.25 m
+Camera              : Swappable (Sony RX1R II 61MP, Sony a6100, or MicaSense RedEdge)
+List price          : USD 20,000
+
+Source: https://wingtra.com/mapping-drone-wingtraone/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

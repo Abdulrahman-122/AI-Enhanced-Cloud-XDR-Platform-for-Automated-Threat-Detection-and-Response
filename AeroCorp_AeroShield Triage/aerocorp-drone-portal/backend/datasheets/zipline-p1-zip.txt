@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Zipline P1 (Zip)
+============================================================
+Manufacturer : Zipline
+Category     : Delivery & logistics
+
+A fixed-wing delivery drone that releases its package by parachute over the drop point. Used in long-distance medical-supply delivery networks.
+
+Specifications
+--------------
+Payload             : 1.75 kg
+Max range           : 80 km
+Wingspan            : 3 m
+Notes               : Round-trip range about 160 km
+List price          : USD 75,000
+
+Source: https://www.zipline.com/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

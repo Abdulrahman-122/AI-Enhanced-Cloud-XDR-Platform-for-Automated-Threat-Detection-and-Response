@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - DJI Agras T40
+============================================================
+Manufacturer : DJI
+Category     : Agriculture
+
+A coaxial-rotor spraying drone with a 40 L tank and a radar system that follows terrain. Also available with a spreading system for seed and granular fertiliser.
+
+Specifications
+--------------
+Flight time         : 20 min
+Weight              : 38 kg
+Wingspan            : 2.184 m
+Camera              : 12MP Gimbal FPV mapping and navigation camera
+List price          : USD 15,000
+
+Source: https://ag.dji.com/t40
+
+Figures are approximate. Confirm with the manufacturer before purchase.

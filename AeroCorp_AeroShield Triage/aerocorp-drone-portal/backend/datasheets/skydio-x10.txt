@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Skydio X10
+============================================================
+Manufacturer : Skydio
+Category     : Enterprise inspection
+
+An autonomy-first drone with six navigation cameras that keeps flying close to structures without GPS. Carries visual and thermal cameras for public-safety and infrastructure teams.
+
+Specifications
+--------------
+Flight time         : 40 min
+Weight              : 2.11 kg
+Wingspan            : 0.35 m
+Camera              : Modular VT300 series (50MP Wide, 48MP Telephoto, 64MP Narrow, FLIR Boson+ Thermal)
+List price          : USD 12,000
+
+Source: https://www.skydio.com/x10
+
+Figures are approximate. Confirm with the manufacturer before purchase.

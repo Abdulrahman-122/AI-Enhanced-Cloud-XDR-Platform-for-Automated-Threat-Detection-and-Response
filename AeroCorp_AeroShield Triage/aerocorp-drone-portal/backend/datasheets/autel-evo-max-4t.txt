@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - Autel EVO Max 4T
+============================================================
+Manufacturer : Autel Robotics
+Category     : Enterprise inspection
+
+A foldable inspection drone that combines wide, zoom, thermal and laser-ranging sensors in one gimbal. Obstacle avoidance uses a mix of cameras and millimetre-wave radar.
+
+Specifications
+--------------
+Flight time         : 42 min
+Weight              : 1.62 kg
+Wingspan            : 0.466 m
+Camera              : Integrated quad-sensor (48MP Zoom, 50MP Wide, 640x512 Thermal, Laser Rangefinder)
+List price          : USD 8,999
+
+Source: https://www.autelrobotics.com/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

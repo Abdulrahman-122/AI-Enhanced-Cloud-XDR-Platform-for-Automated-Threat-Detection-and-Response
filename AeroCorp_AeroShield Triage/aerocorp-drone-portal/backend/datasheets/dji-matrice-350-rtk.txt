@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - DJI Matrice 350 RTK
+============================================================
+Manufacturer : DJI
+Category     : Enterprise inspection
+
+A weather-sealed enterprise platform that carries up to three payloads, including zoom, thermal and laser rangefinder cameras. Used for power-line, tower and facade inspection.
+
+Specifications
+--------------
+Flight time         : 55 min
+Weight              : 3.77 kg
+Wingspan            : 0.81 m
+Camera              : Swappable (Compatible with Zenmuse H30T, L2, P1, and third-party payloads)
+List price          : USD 6,990
+
+Source: https://enterprise.dji.com/matrice-350-rtk
+
+Figures are approximate. Confirm with the manufacturer before purchase.

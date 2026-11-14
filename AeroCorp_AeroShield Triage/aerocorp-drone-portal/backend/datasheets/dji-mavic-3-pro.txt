@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - DJI Mavic 3 Pro
+============================================================
+Manufacturer : DJI
+Category     : Consumer & creator
+
+A folding triple-camera drone with a large-sensor main camera and two telephoto lenses. Popular with filmmakers who need several focal lengths from one flight.
+
+Specifications
+--------------
+Flight time         : 43 min
+Weight              : 0.958 kg
+Wingspan            : 0.347 m
+Camera              : Triple system (4/3 Hasselblad, 1/1.3-inch Medium Tele, 1/2-inch Tele)
+List price          : USD 2,199
+
+Source: https://www.dji.com/mavic-3-pro
+
+Figures are approximate. Confirm with the manufacturer before purchase.

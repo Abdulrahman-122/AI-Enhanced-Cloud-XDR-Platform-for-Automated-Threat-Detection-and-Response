@@ -1,0 +1,22 @@
+AEROCORP DATASHEET - DJI Phantom
+============================================================
+Manufacturer : Chinese technology company DJI.
+Category     : Consumer & creator
+
+New drone for our customers
+
+Specifications
+--------------
+Flight time         : 43 min
+Max range           : 15 km
+Max speed           : 75 km/h
+Weight              : 0.958 kg
+Wingspan            : 0.4 m
+Camera              : 48 MP, 1-inch sensor
+Ingress protection  : IP43
+Notes               : Foldable frame
+List price          : USD 250
+
+Source: https://www.dji.com/global/products/camera-drones#mavic-series
+
+Figures are approximate. Confirm with the manufacturer before purchase.

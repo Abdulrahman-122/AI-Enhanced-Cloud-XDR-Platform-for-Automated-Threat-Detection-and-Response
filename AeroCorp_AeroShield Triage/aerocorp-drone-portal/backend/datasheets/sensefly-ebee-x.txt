@@ -1,0 +1,18 @@
+AEROCORP DATASHEET - senseFly eBee X
+============================================================
+Manufacturer : AgEagle (senseFly)
+Category     : Mapping & survey
+
+A hand-launched fixed-wing mapping drone with a foam body and a swappable camera. Long a standard tool for agriculture, mining and land-survey teams.
+
+Specifications
+--------------
+Flight time         : 42 min
+Weight              : 1.62 kg
+Wingspan            : 0.466 m
+Camera              : Integrated quad-sensor (48MP Zoom, 50MP Wide, 640x512 Thermal, Laser Rangefinder)
+List price          : USD 8,999
+
+Source: https://ageagle.com/drones/ebee-x/
+
+Figures are approximate. Confirm with the manufacturer before purchase.

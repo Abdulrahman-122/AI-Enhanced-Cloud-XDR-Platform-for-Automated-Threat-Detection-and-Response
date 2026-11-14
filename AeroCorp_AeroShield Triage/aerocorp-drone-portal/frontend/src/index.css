@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light;
+    background: #e6edf2;
+  }
+  body {
+    @apply bg-chart font-body text-ink antialiased;
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-semibold;
+    line-height: 1.02;
+    letter-spacing: -0.005em;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  :focus-visible {
+    outline: 3px solid #1b6aa5;
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: #b0125a;
+    color: #fff;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center border border-route bg-route px-5 py-2.5 font-display text-lg font-semibold text-white transition-colors hover:border-routedark hover:bg-routedark disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center justify-center border border-ink bg-transparent px-5 py-2.5 font-display text-lg font-semibold text-ink transition-colors hover:bg-ink hover:text-chart;
+  }
+  .field {
+    @apply block w-full border border-rule bg-paper px-3 py-2.5 text-ink placeholder:text-soft/70 focus:border-ink;
+  }
+  .field-label {
+    @apply mb-1 block font-display text-lg font-medium text-ink;
+  }
+  .link {
+    @apply text-route underline decoration-route/40 hover:decoration-route;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* The one orchestrated moment: the route draws itself and each stop appears as the line reaches it. */
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.route-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 2.8s linear 0.25s forwards;
+}
+.route-stop {
+  opacity: 0;
+  animation: appear 0.45s ease-out forwards;
+  cursor: pointer;
+}
+.route-stop:hover .stop-name,
+.route-stop:focus-visible .stop-name {
+  fill: #b0125a;
+  text-decoration: underline;
+}
+.route-stop:focus-visible {
+  outline: none;
+}
+.route-stop:focus-visible .stop-dot {
+  stroke: #1b6aa5;
+  stroke-width: 4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .route-stop {
+    animation: none;
+    opacity: 1;
+  }
+}
