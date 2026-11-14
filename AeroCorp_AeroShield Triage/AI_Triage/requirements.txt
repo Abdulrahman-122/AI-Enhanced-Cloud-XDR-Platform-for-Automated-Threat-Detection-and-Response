@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+httpx
+pydantic
+reportlab
+python-pptx
