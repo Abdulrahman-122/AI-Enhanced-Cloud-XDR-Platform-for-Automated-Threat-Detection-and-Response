@@ -13,7 +13,7 @@
 - to test the connection :
 #curl http://localhost:8080
 - on your browser
-http://localhost:8080       (it may open if not you need to download docker first) on your vm
+http://localhost:8080       (it may open if not you need to download docker first) on your vm -> go to walkthrough.md on this dirctory and you will be able to install docker.
 ```
 # step 2 ( start AI model in order to monitor our alerts, give us some solutions for any attack on the XDR)
 
