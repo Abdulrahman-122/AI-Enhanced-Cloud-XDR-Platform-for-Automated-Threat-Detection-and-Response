@@ -41,3 +41,8 @@ uvicorn main:app --host 127.0.0.1 --port 9000
 #on your browser
 http://localhost:9000 # (you will see the AI )
 ```
+---
+# output of aerocorp webapp
+- 
+# output of AI_Triage
+-
